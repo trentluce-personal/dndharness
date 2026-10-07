@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "enabled_providers": ["github-copilot"],
+  "share": "disabled",
+  "permission": {
+    "edit": "ask",
+    "bash": "ask",
+    "external_directory": "ask"
+  }
+}
