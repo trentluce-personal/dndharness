@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 110">
+  <path fill="#752c36" stroke="#dbbb80" stroke-width="4" stroke-linejoin="round" d="M50 5 94 30v50l-44 25L6 80V30L50 5Z" />
+  <path fill="none" stroke="#dbbb80" stroke-width="3" stroke-linejoin="round" d="m50 5 24 65H26L50 5ZM6 30l20 40-20 10m88-50L74 70l20 10M26 70l24 35 24-35M6 30l44 15 44-15" />
+  <text x="50" y="62" text-anchor="middle" fill="#dbbb80" font-family="Georgia,serif" font-size="22">20</text>
+</svg>

@@ -2,3 +2,9 @@
 .env.*
 !.env.example
 .opencode/node_modules/
+.tools/opencode/
+.tools/node/
+node_modules/
+dist/
+.playwright-cli/
+artifacts/

@@ -1,0 +1,16 @@
+{
+  "name": "@dndharness/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "seed:demo": "node src/seed-demo.js",
+    "test": "node src/run-tests.js"
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "pg": "8.23.1"
+  }
+}
