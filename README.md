@@ -18,7 +18,8 @@ This is a native npm-workspace monorepo, with one root lockfile:
 
 ```text
 apps/web/         React + Vite app, including its own package.json and build config
-apps/api/         Express API, SQL migrations, authentication, and workflow checks
+apps/api/         Express API, authentication, and workflow checks
+apps/db/          SQL migrations for the PostgreSQL schema
 packages/         Shared packages, added only when multiple apps need them
 scripts/          Local development-tool installers
 .opencode/        Agent commands and skills
@@ -59,6 +60,22 @@ docker compose up -d --wait      # Start again
 docker compose down             # Remove the container; keep dependency volumes
 ```
 
+In VS Code, open this repository folder and choose **Terminal → Run Task…**
+or press **Ctrl+Shift+P** and select **Tasks: Run Task**. With Docker Desktop
+running and `.env` configured as above, choose:
+
+| Task | Command |
+| --- | --- |
+| Application: Start | `docker compose up -d --wait` |
+| Application: Stop | `docker compose stop` |
+| Application: Rebuild and start | `docker compose up --build -d --wait` |
+| Application: Status | `docker compose ps --all` |
+| Application: Logs | `docker compose logs -f web api` |
+
+Tasks run from the repository root. After starting, use the app URL above.
+**Application: Logs** keeps following output until you press **Ctrl+C** in its
+terminal or use **Tasks: Terminate Task**; this stops following, not the containers.
+
 The container uses `restart: unless-stopped`, so it comes back when Docker starts
 after a Windows restart, unless you explicitly stopped it. Enable Docker Desktop
 startup at sign-in if you want it available automatically. Source files remain
@@ -78,34 +95,124 @@ Changing `.env` does not change the password of an already-initialized database.
 
 ### Accounts, characters, and campaigns
 
+The interface is designed for first-time users: **Home** offers direct actions
+to join friends or run a game. **Characters**, **Campaigns**, and **Dice roller**
+have dedicated gameplay navigation. **Profile** and **Log out** are in
+the top-right account controls. The dice roller is also available without an account.
+Choose a rules edition when creating a character or campaign; ask your DM which
+version to use. If you need a character while joining, you can create it directly
+through PDF import from the join dialog and return with your invite code preserved.
+
 1. Choose **Create an account**. Email is a local login identifier; no verification
    or password-recovery email is sent. Passwords require 10–128 characters.
 2. **Profile** edits display name, optional private real name and bio, and password.
    Email is currently read-only. Password changes invalidate other sessions.
-3. **Characters** creates an edition-linked core sheet: ancestry, class, level,
+3. **Characters → Import character sheet** is the entry point for new characters.
+   Upload a supported D&D Beyond PDF, review it, and add the character. Existing
+    characters remain editable. **Delete character** on Home or Characters cards,
+    or in the sheet editor, always asks **Are you sure you want to delete?** and names
+    the character. Cancel keeps the character; explicit confirmation removes
+    it from your library and future campaign join choices. Existing campaign copies,
+    membership, and checkpoints remain intact; the internal character record is
+    retained for those links. There is no undo. Card deletion keeps you on Home or
+    Characters; deleting from the sheet returns to Characters. Failed deletion
+    keeps the confirmation open so you can retry.
+    The edition-linked core sheet includes ancestry, class, level,
    abilities, HP, AC, speed, background, equipment, and notes. This provisional
    sheet is manual data entry, not an automated 5e rules engine, and will change
    later. A character's edition is fixed after creation.
-4. **Campaigns → New campaign** makes you the DM. Add your own matching characters
+4. **Campaigns** is a library of saved adventure sources. **Open campaign** opens its
+   overview, with a player-safe synopsis, rules edition, and DM identity; it does not start a live game. Archived campaigns
+   remain accessible but cannot accept new characters while archived.
+   **Campaigns → New campaign** prepares a saved campaign and makes you the DM. Add your own matching characters
    or share the invite code. A player uses **Join with code** and selects their own
    character of the same edition. Accounts can participate in several campaigns.
-5. The campaign keeps its own copy of each joined character sheet. The DM edits
+   The DM edits the source title and synopsis, private storyline, and private DM
+   guidance. **Create planning canvas** saves an empty board; **Open planning canvas**
+   returns to it. Add freely placed story, location, encounter, or NPC points with
+   notes, location references, and manual NPC/enemy references. Move markers by
+   dragging, arrow keys (Shift for five-percent steps), or X/Y percentage fields.
+   **Add point at center** works without a pointer. Deleting a point asks for confirmation.
+   Source and canvas edits require explicit Save; errors retain the draft.
+   **Reload saved source** asks before discarding edits. Concurrent edits reject stale
+   revisions and require reloading before saving. Leaving unsaved source edits asks
+   whether to keep editing or discard; saving locks editing/navigation.
+   The canvas is DM-only, limited to 100 points and 200,000 bytes for the whole source.
+   It has no connections, maps/uploads, combat automation, live sessions, or playthrough branches.
+5. **Existing play progress** keeps the existing journal, party, and checkpoints at
+   `/campaigns/:id/progress`, separate from the editable source. The campaign keeps
+   its own copy of each joined character sheet. The DM edits
    campaign sheets, manages the party, and updates the journal. Party members
-   can read the journal, sheets, and saves. Campaign notes are visible to the party,
+   can read the journal, sheets, and saves. Existing journal notes are visible to the party,
    so they are not a private DM notebook. Emails, real names, and bios are private.
-6. **Save chapter** writes an immutable snapshot of the journal, campaign title/status,
+6. **Save checkpoint** writes an immutable snapshot of the journal, campaign title/status,
    DM public identity, party account links/public identities, and campaign sheets.
-   It also saves the currently edited journal. **Inspect snapshot** views history;
+   It also saves the currently edited journal. **View checkpoint** views history;
    **Restore** replaces current campaign state/party after confirmation. Personal
    character sheets and save history are preserved. Only the DM can save/restore.
-   Restoring a party can reinstate a previously removed member's access.
+    Restoring a party can reinstate a previously removed member's access.
+    Restoring a checkpoint does not replace the adventure source or its planning canvas.
 7. Archive a campaign to mark it inactive; reactivate it to accept new party members.
+
+Personal **Open character sheet** links open `/characters/:id` as a full page,
+with **Home → Characters → saved name** breadcrumbs. Section destinations use
+`/characters`, `/campaigns`, `/dice`, and `/profile`; campaigns open at
+`/campaigns/:id`; private planning uses `/campaigns/:id/planning`, and existing
+play progress uses `/campaigns/:id/progress`. Links support reload, direct access, browser Back/Forward, and
+opening another tab. Signed-out links remain in place through login. Sheets are
+resolved from the signed-in account's library; removed or inaccessible sheets
+show an unavailable state. Personal sheets open read-first with framed abilities,
+listed modifiers, persistent saving throws/skills, and Actions, Spells, Inventory,
+Features, Background, and Notes tabs. Notes retains all modifier labels and other
+PDF fields. **Edit character** opens the editor on the same URL; **Cancel editing**
+asks to discard dirty edits, with **Keep editing** preserving the draft. Successful
+saves return to the saved sheet. Personal edits save in place; failed saves retain the
+draft. Leaving meaningful unsaved personal edits asks whether to keep editing or
+discard, including browser history; reload/closing uses the browser's warning.
+Campaign sheets and imported-sheet review remain dialogs.
 
 Sessions last seven days and survive server restarts. Passwords use salted scrypt;
 only hashed random session tokens are stored. Cookies are HTTP-only and SameSite.
 Mutating requests accept JSON and validate supplied browser origins. This setup
 is for local development; HTTPS/secure cookies (`COOKIE_SECURE=true`) and reverse
 proxy configuration are needed for a future hosted deployment.
+
+### Import a character sheet
+
+In **Characters**, choose **Import character sheet** and select a form-fillable
+D&D Beyond PDF (up to 10 MB). The app reads the PDF locally in your browser and
+opens an editable draft with a character summary and extracted counts; nothing
+is saved until you choose **Add character**, which stays visible during review.
+Equipment rows expand when selected for editing; removal offers Undo.
+Review the rules edition and fill in any missing core values. Current HP belongs
+to each campaign and is not imported into personal sheets; newly joined campaign
+copies start at maximum HP.
+PHB-2024 references suggest the 2024 edition but remain editable before creation.
+Equipment is imported as editable item rows (name, quantity, listed weight), with
+separate copper/silver/electrum/gold/platinum coin fields. Unknown quantities and
+weights remain blank; listed PDF weights are preserved without assuming whether
+they are per-item or total. Existing free-text equipment remains editable as notes.
+Saving throws and skills retain listed modifiers and proficiency/expertise.
+Attacks, spells (including printed preparation markers and page references),
+spellcasting stats, slot headings, features/actions, identity, and story details
+have separate expandable, editable reference sections. These values are not
+automatically calculated game rules. Text, checkbox, and choice fields are read;
+unrecognized filled fields appear under **Other PDF fields** for review. An “O”
+preparation marker is preserved as printed, not interpreted as prepared/unprepared.
+The original PDF
+is not uploaded or retained. Scanned/flattened PDFs and other document formats
+are not supported in this first version. Imports create new personal characters.
+
+Focused importer checks: `node --test apps/web/test/characterImport.test.js`.
+
+Character sheet format 3 adds structured `details` alongside format-2 `inventory`
+and legacy equipment/notes text. Existing format-1/2 sheets and saved snapshots remain readable; restoring
+history keeps its original HP and equipment. New/edited personal sheets omit
+current HP, while campaign sheets retain it. Editing an old sheet upgrades its
+format without parsing or replacing its old notes. Re-import a PDF to populate
+the new fields; imports create a new character. Character details are copied to
+campaigns and included in checkpoints, with the same party visibility as the
+rest of the sheet. Each sheet is limited to 200 KB of JSON data.
 
 ### Optional fictional demo
 
@@ -120,10 +227,19 @@ accounts. Demo content is **not** inserted during normal startup.
 
 ### API and migrations
 
-SQL migrations in `apps/api/migrations` apply transactionally at API startup and
+SQL migrations in `apps/db/migrations` apply transactionally at API startup and
 are recorded in `schema_migrations`. Add numbered migrations instead of editing
 an already-applied migration. Campaign saves reject SQL updates/deletes through
 a database trigger; snapshots carry a format version.
+
+Migration `003_campaign_adventures.sql` adds independent version-1 adventure sources
+with integer revisions. Existing sources inherit only the old campaign title;
+their synopsis and private fields start blank and their canvas starts null. Old
+shared summaries are not copied into the synopsis. Library/detail responses expose
+only source title/synopsis; full source GET/PUT is DM-only. PUT sends the entire
+source with its current `revision`; success increments it atomically and returns
+canonical data. A stale revision returns 409. Source fields are independent of
+legacy checkpoint creation/restoration.
 
 Main endpoints (all under `/api`):
 
@@ -132,8 +248,9 @@ Main endpoints (all under `/api`):
 | Public | `GET /health`, `GET /editions` |
 | Accounts | `POST /auth/register`, `/auth/login`, `/auth/logout`; `GET /auth/me` |
 | Profile | `PATCH /profile`; `POST /profile/password` |
-| Characters | `GET/POST /characters`; `PATCH /characters/:id` |
+| Characters | `GET/POST /characters`; `PATCH/DELETE /characters/:id` |
 | Campaigns | `GET/POST /campaigns`; `GET/PATCH /campaigns/:id`; `POST /campaigns/join` |
+| Adventure source (DM only) | `GET/PUT /campaigns/:id/adventure` |
 | Party | `POST /campaigns/:id/party`; `PATCH/DELETE /campaigns/:id/party/:characterId` |
 | Saves | `GET/POST /campaigns/:id/saves`; `POST /campaigns/:id/saves/:saveId/restore` |
 
@@ -158,19 +275,21 @@ checks accounts, permissions, edition constraints, private fields, saves,
 restoration, password changes, logout, and origin validation. It never targets
 the main campaign database. No frontend unit runner or lint tool is configured.
 
-### Dice tray and future 3D assets
+### Dice tray and 3D visuals
 
 Roll d4/d6/d8/d10/d12/d20/d100, up to ten dice, with a modifier. Results use
 browser cryptographic randomness with rejection sampling; animation does not
 determine the result. The last five rolls are page-local and are not saved or
-broadcast campaign events. Reduced motion skips the tumble.
+broadcast campaign events. Reduced motion uses an instant, non-3D result.
 
-Researched future option: [3D Dice Box](https://github.com/3d-dice/dice-box)
-(MIT) uses Babylon.js, Ammo.js, workers, and locally served assets. Its linked
-[Dice Themes](https://github.com/3d-dice/dice-themes) collection advertises CC0
-models/themes. If actual 3D is requested, verify each selected asset's license,
-pin the renderer, serve assets locally, and retain this lightweight fallback.
-No 3D dependency or external assets have been added in this increment.
+The local `@dndharness/dice-3d` package supplies themed WebGL visuals using pinned
+`@3d-dice/dice-box-threejs` (Three.js/Cannon). The scene is loaded separately from
+the main app and needs no hosted service, remote textures, or sounds. Dice are
+forced to the precomputed values and read back for verification; a visual mismatch,
+rendering error, context loss, or 15-second roll timeout switches to the text
+fallback without losing the roll. d100 uses a tens die and a units die.
+The tray fits a fixed physics area to the screen; resize updates wait for a
+running throw to settle so changing window size does not alter its outcome.
 
 ### Run locally
 
@@ -278,7 +397,9 @@ and edition-specific data should remain separate, small, composable pieces.
 - `apps/web/src/styles.css`: responsive styling using local system fonts.
 - `apps/web/src/AccountWorkspace.jsx`: account dashboard and creation flows.
 - `apps/web/src/CampaignDetail.jsx`: journal, party, and saved chapters.
-- `apps/api/migrations/001_initial.sql`: schema and initial edition metadata.
+- `apps/web/src/CampaignOverview.jsx`: safe source overview and private DM source editor.
+- `apps/web/src/CampaignPlanningCanvas.jsx`: private blank-board planning and point editor.
+- `apps/db/migrations/001_initial.sql`: schema and initial edition metadata.
 
 To add edition metadata, insert a row through a new SQL migration:
 
@@ -316,6 +437,8 @@ dependencies or external plugins:
 | `.opencode/skills/ui-quality/SKILL.md` | Controls, forms, accessibility, responsiveness, and interaction criteria |
 | `.opencode/skills/frontend-review/SKILL.md` | Real browser interactions and screenshot inspection |
 | `.opencode/agents/app-reviewer.md` | Independent review of requirements, permissions, data integrity, and UI |
+| `.opencode/skills/feature-dispatch/SKILL.md` | Scoped parallel workstreams, shared contracts, integration, and verification |
+| `.opencode/agents/dispatcher.md` | Read-only default coordinator using existing agents with specialist briefs |
 
 Use `/small-feature your feature description` for incremental implementation.
 The command loads `web-feature`; UI work uses `ui-quality` and `frontend-review`
@@ -339,6 +462,41 @@ Impeccable, Vercel interface/React guidelines, W3C ARIA patterns, Playwright,
 Express, and OWASP. Sources are linked in the guide/skills. External stylistic
 opinions do not override this app's approved fantasy identity. Restart OpenCode
 to discover new or edited skills and agents; the pinned CLI remains unchanged.
+
+### Multi-agent feature dispatch
+
+**dispatcher** is the configured default primary agent. You can request work
+directly or use `/dispatch-feature your feature description`. `/small-feature`
+also targets the dispatcher and delegates a minimal increment to one implementer.
+Other coordinating agents use `feature-dispatch` for substantial features with
+separable aspects under the project instructions; scoped workers do not re-dispatch.
+
+The dispatcher cannot edit files. Its shell access is restricted to three Git
+inspection commands (`git status --short`, `git diff`, and
+`git log --oneline -10`). It delegates all edits and runtime checks, including
+integration wiring, documentation, builds, tests, and browser operations, to
+workers. It reads the resulting changes and evidence and remains responsible for
+completion. If no implementation worker is available, it reports a blocker.
+
+The dispatcher agrees acceptance criteria and shared API/data contracts, then
+assigns exclusive file ownership. It normally sends UI/interaction and API/data
+work to separate `general` agents with specialist briefs, uses `explore` for
+bounded research, and requests one read-only `app-reviewer` pass after integration.
+Only independent work runs concurrently; small or tightly coupled changes use
+one implementer. Workers share the checkout and report cross-boundary needs to
+the dispatcher, which assigns final wiring, documentation, and integrated checks
+to a worker and reviews the results. Worker permissions still permit implementation;
+the read-only restriction applies to the coordinator itself.
+
+Test database runs and other shared-state checks are serialized; browser sessions
+and artifacts have distinct names when delegated. The dispatcher reports actual
+verification evidence and remaining gaps. Parallel work can use more model
+requests; agents inherit the selected model unless configured otherwise, and
+image inspection still requires an image-capable model. No extra provider,
+plugin, dependency, or separate worktree is required.
+
+Quit and restart OpenCode after these harness changes to discover the dispatcher,
+command, and skill. Existing sessions retain their loaded configuration.
 
 ### Install the repo-local CLI
 
@@ -399,10 +557,21 @@ opencode
    depend on your plan and account settings.
 3. Run `/models` to choose an available model.
 
-The repository enables only the GitHub Copilot provider and leaves model
+The repository enables GitHub Copilot and Deep Infra and leaves model
 selection to your account. Credentials are stored by OpenCode in your user
 profile, not in the repository. Do not paste tokens into configuration files
 or commit them.
+
+### Connect Deep Infra
+
+1. Create an API key in the [Deep Infra dashboard](https://deepinfra.com/dash).
+2. Quit and restart OpenCode from this repository to load the provider configuration.
+3. Run `/connect`, search for **Deep Infra**, and enter your API key at the prompt.
+4. Run `/models` and choose a Deep Infra model. For coding tasks, choose one
+   with tool-calling support; screenshot review also requires image input support.
+
+Deep Infra usage is billed through your Deep Infra account. OpenCode stores
+the key in your user profile, outside the repository.
 
 Session sharing is disabled. File edits, shell commands, and access outside
 the project require approval. These settings do not prevent code from being

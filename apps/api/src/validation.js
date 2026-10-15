@@ -27,21 +27,35 @@ export function password(value) {
   if (typeof value !== 'string' || value.length < 10 || value.length > 128) fail('Password must contain 10–128 characters.');
   return value;
 }
-export function sheet(value) {
+export function sheet(value, { campaign = false } = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail('Character sheet is required.');
-  const result = { version: 1 };
+  if (value.version !== undefined && ![1, 2, 3].includes(value.version)) fail('Unsupported character sheet version.');
+  const result = { version: 3 };
   for (const key of ['ancestry', 'class', 'background']) result[key] = text(value[key] ?? '', key, 120);
   for (const key of ['equipment', 'notes']) result[key] = text(value[key] ?? '', key, 10000);
   result.level = integer(value.level ?? 1, 'Level', 1, 100);
-  result.hp = integer(value.hp ?? 10, 'Current HP', 0, 100000);
   result.maxHp = integer(value.maxHp ?? 10, 'Maximum HP', 1, 100000);
-  if (result.hp > result.maxHp) fail('Current HP cannot exceed maximum HP.');
+  if (campaign) {
+    result.hp = integer(value.hp ?? result.maxHp, 'Current HP', 0, 100000);
+    if (result.hp > result.maxHp) fail('Current HP cannot exceed maximum HP.');
+  }
+  if (value.inventory !== undefined) {
+    const inventory = value.inventory;
+    if (!inventory || !Array.isArray(inventory.items) || inventory.items.length > 200) fail('Equipment must contain no more than 200 items.');
+    result.inventory = { items: inventory.items.map((item) => {
+      if (!item || typeof item !== 'object') fail('Equipment item is required.');
+      return { name: text(item.name, 'Item name', 200, true), quantity: item.quantity === null ? null : integer(item.quantity, 'Item quantity', 0, 100000), weight: text(item.weight ?? '', 'Item weight', 80) };
+    }), coins: {} };
+    for (const denomination of ['cp', 'sp', 'ep', 'gp', 'pp']) result.inventory.coins[denomination] = inventory.coins?.[denomination] == null ? null : integer(inventory.coins[denomination], `${denomination.toUpperCase()} coins`, 0, 1000000000);
+  }
   result.ac = integer(value.ac ?? 10, 'Armor class', 0, 1000);
   result.speed = integer(value.speed ?? 30, 'Speed', 0, 10000);
   result.abilities = {};
   for (const key of ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']) {
     result.abilities[key] = integer(value.abilities?.[key] ?? 10, key, 1, 100);
   }
+  if (value.details !== undefined) result.details = characterDetails(value.details);
+  if (Buffer.byteLength(JSON.stringify(result), 'utf8') > 200000) fail('Character sheet must be smaller than 200 KB.');
   return result;
 }
 export function campaignState(value = {}) {
@@ -52,3 +66,4 @@ export function campaignState(value = {}) {
     notes: text(value.notes ?? '', 'Campaign notes', 20000),
   };
 }
+import { characterDetails } from './character-details.js';

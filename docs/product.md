@@ -59,18 +59,30 @@ These relationships are the current agreed product model:
 - **Personal character:** owned by one account, with a sheet attached to a
   specific edition. The current character's edition is fixed after creation.
   Any future conversion between editions must be deliberate.
-- **Campaign:** a shared, ongoing game tied to an edition, with one account as
-  its DM and a party of characters linked to their owning accounts. Players join
-  by an invite code with a matching-edition character.
+  Maximum HP belongs to the personal sheet; current HP belongs to campaign copies.
+  Existing legacy personal HP is not used when joining a campaign.
+  Owners can delete a personal character from their library and future join choices.
+  Its internal record remains to preserve campaign copies, membership, and checkpoint
+  restoration. Deletion has confirmation and no in-app undo; restoring a campaign
+  does not restore the character to the personal library.
+- **Campaign:** an editable adventure source tied to an edition, with one account
+  as its DM. Its title and player-safe synopsis are visible to members. Its
+  storyline, DM guidance, and planning canvas are private to the DM. The source
+  is independent of preserved existing play progress: party characters linked to
+  accounts, shared journal, and checkpoints. Players still join those existing
+  records by invite code with a matching-edition character.
 - **Campaign character:** a campaign-specific copy of a personal sheet. Its HP,
   equipment, notes, and other state can evolve without overwriting the personal
   character or another campaign's copy. The DM currently edits campaign sheets.
+  Newly joined copies start at maximum HP. Existing campaign HP and historical
+  saved HP remain unchanged.
 - **Save / saved chapter:** an immutable, versioned snapshot of the campaign's
   state, DM public identity, party identities/account links, and campaign sheets.
   It is a checkpoint like a game save, separate from the mutable current campaign.
 - **Restore:** the DM can replace the current journal and party state with a
   snapshot. Personal sheets and save history remain intact. Restoring a previous
   party can also reinstate that party's access; this must remain explicit.
+  Restore does not replace the adventure source or its private planning canvas.
 
 The current journal contains a session number, location, story summary, and
 party-visible notes. It is not yet a combat engine or a private DM notebook.
@@ -83,14 +95,36 @@ as in the interface.
 Implemented foundations: local accounts and sessions, profile/password editing,
 database-backed editions, core character sheets, campaign creation/joining,
 campaign sheet copies, journal editing, snapshot saves/restoration, and a dice tray.
+Campaign source overview/editing and the private blank planning canvas are also
+implemented. Version-1 sources use revision-checked whole-source saves; stale
+saves fail without replacing the draft. The canvas supports up to 100 freely
+placed story/location/encounter/NPC points with notes and manual location/NPC/enemy
+references, bounded percentage coordinates, pointer/touch and keyboard movement.
+The complete source is limited to 200,000 UTF-8 bytes. It has explicit save/reload
+and no autosave. Existing sources inherit only their old title, not their shared
+journal summary. Member overview/library requests expose safe metadata only;
+full source endpoints enforce DM-only access.
 
 - The **core character sheet is provisional** and will change later. It currently
   supports manual entry of identity, class/ancestry/background, level, abilities,
   HP, AC, speed, equipment, and notes. It does not automate edition-specific rules.
-- The **dice tray** is an animated local roller. Its results/history are not yet
-  persisted or synchronized with a party. Actual 3D rendering is a possible later
-  enhancement, not a requirement of this increment.
-- **Combat management, richer DM tools, maps/visuals, and live multiplayer state**
+- Character import reads form-fillable D&D Beyond PDFs locally in the browser,
+  then presents an editable, unsaved personal-character draft. It is the only
+  new-character creation path in the interface. Existing personal characters and
+  imported drafts remain editable. Missing values
+  require input; rules edition remains a user choice. Equipment has structured
+  item names, quantities, listed weights, and separate coins (sheet format 2);
+   legacy free-text equipment remains readable. Sheet format 3 preserves skills,
+   saving throws/proficiency, attacks, spells/spellcasting, features/actions, and
+   identity/story details as structured editable references. Unknown filled PDF
+   fields remain reviewable. Printed spell preparation markers are not inferred
+   as gameplay state. Existing format-1/2 notes and historical saves remain intact.
+   These references are not converted into automated rules.
+  Scanned/flattened PDFs are outside this initial import scope.
+- The **dice tray** uses local themed 3D visuals with precomputed authoritative
+  outcomes. Reduced motion and rendering failures use a non-3D fallback.
+  Its results/history are not yet persisted or synchronized with a party.
+- **Combat management, maps/uploads, connected planning graphs, richer DM tools, and live multiplayer state**
   are product goals, not implemented capabilities.
 - Account recovery emails, account deletion, and hosted deployment are outside
   the current increment. There is no dependence on an external identity service.
@@ -109,14 +143,67 @@ motion with an explicit app override are part of the intended experience.
 Verify real browser behavior and inspect screenshots rather than treating a
 successful build as proof of UI quality.
 
+## Approved future direction: event-driven combat and hybrid storage
+
+Design decision recorded on 2026-10-09:
+
+- The first main gameplay feature will be **event-driven combat management and
+  simulation**. This describes combat actions, resolved outcomes, and resulting
+  state changes; it does not by itself commit to autonomous combat AI.
+- Use a **hybrid PostgreSQL / Neo4j architecture**, assigning data to the model
+  that fits it. PostgreSQL remains responsible for relational application data
+  such as accounts, permissions, campaigns, character sheets, and saves. Neo4j
+  is intended for relationship-heavy combat state, such as effect instances,
+  sources and targets, concentration, grapples, and effect dependencies.
+- The preferred ownership model is PostgreSQL as the authoritative store for
+  resolved combat events and checkpoints, with Neo4j as a rebuildable projection
+  of combat relationships. Edition-aware application rules determine outcomes;
+  database relationships do not constitute a rules engine.
+- Historical events/checkpoints must retain resolved outcomes and relevant rules
+  versions so later rule changes do not silently reinterpret past combat.
+- Finalize and agree on the combat UX design **before starting implementation**
+  of combat or the hybrid database architecture. The existing visual design guide
+  remains the foundation; it does not yet specify the combat experience.
+- Exact event contracts, projection consistency, replay/restore behavior, and
+  deployment details will be designed after the UX is agreed. Neo4j and combat
+  event processing are not currently implemented.
+
+## Proposed campaign and live-instance UX
+
+The Campaigns page presents editable adventure sources as a library. Opening one
+accesses its safe overview and, for the DM, private source editing and planning;
+it does not start a live game. Existing play progress lives at a separate destination.
+Archived entries remain accessible and do not become
+read-only; archiving prevents adding characters. Only checkpoints are immutable.
+
+The image/instance mental model treats campaigns as the editable base adventure,
+like an adventure book with storyline and DM preparation. “Image” describes that
+source identity, not an immutable template. The source is now stored independently
+from old journal/party/checkpoint records. Future playthrough branches and live
+instances remain unimplemented; their storage and lifecycle contracts are still
+undecided. A live session
+instance could be the temporary table opened for an evening. A DM
+would host a lobby; players would join with compatible existing campaign copies
+or new copies of personal characters and mark ready. The DM would start play,
+publish shared story/journal content, pause/resume, and close the live session.
+Closing would release live seats without archiving/deleting the campaign or
+changing personal originals.
+
+This remains a future design proposal, not an approved production schema or
+final experience. Implement it one stage at a time, agreeing on the next smallest
+useful slice before starting it. Live session instances, lobby/readiness controls,
+friend discovery, and multiplayer synchronization are not implemented; LAN access
+also remains future work as described above.
+
 ## Priorities to discuss
 
 The following are discussion topics, not an approved implementation order:
 
 - LAN hosting: how the host shares a link, what setup is required, and which
   browser/device combinations the group needs.
-- First shared gameplay workflow: combat/initiative, live dice, or campaign-state
-  updates, and what the DM versus players should control.
+- Combat UX: the event-driven management/simulation workflow, what the DM versus
+  players should control, and how actions, effects, and outcomes are presented.
+  Agree on this experience before implementing the approved future architecture.
 - Character-sheet evolution: which edition to automate first and which fields,
   calculations, or imports matter to the group's real characters.
 - DM information boundaries: party-visible journal versus private notes.

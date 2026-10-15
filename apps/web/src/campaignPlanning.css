@@ -1,0 +1,39 @@
+.campaign-source { padding-top: 28px; overflow-wrap: anywhere; }
+.source-heading { max-width: 800px; margin-bottom: 28px; }
+.source-heading h1 { font: 400 clamp(32px, 3.5vw, 46px)/1.2 Georgia, serif; }
+.source-heading p:not(.eyebrow), .source-synopsis p { font-size: 15px; line-height: 1.8; color: var(--muted); }
+.source-heading a, .source-legacy-link a { color: var(--wine); display: inline-block; padding-block: 10px; text-underline-offset: 4px; }
+.campaign-source h2 { font: 27px/1.3 Georgia, serif; margin: 0 0 16px; }
+.source-planning-entry { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
+.source-planning-entry > div { flex: 1 1 320px; }
+.source-editor fieldset { display: flex; flex-direction: column; gap: 18px; }
+.source-save-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.source-save-bar > span { flex: 1 1 180px; font-size: 14px; color: var(--muted); }
+.source-legacy-link { border-top: 1px solid var(--border); padding-top: 12px; }
+.source-legacy-link p { margin: 0; font-size: 13px; line-height: 1.7; color: var(--muted); }
+.planning-form .planning-fields { border: 0; padding: 0; min-width: 0; }
+.planning-fields > label { display: block; max-width: 600px; }
+.planning-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 20px 0 12px; }
+.planning-toolbar > span { margin-right: auto; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.planning-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); gap: 24px; align-items: start; }
+.planning-board-column { min-width: 0; }
+.planning-board { position: relative; width: 100%; height: clamp(350px, 45vw, 560px); border: 1px solid var(--control-border); border-radius: 12px; background: var(--surface); }
+.planning-board.is-placing { cursor: crosshair; outline: 1px dashed var(--wine); outline-offset: 3px; }
+.planning-board-empty { position: absolute; inset: 24px; display: grid; align-content: center; justify-items: center; text-align: center; pointer-events: none; color: var(--muted); font-size: 14px; line-height: 1.8; }
+.planning-board-empty > span { color: var(--wine); font-size: 32px; }
+.planning-marker { position: absolute; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; transform: translate(-50%, -50%); border: 1px solid var(--control-border); border-radius: 50%; background: var(--control); color: var(--text); font: 600 16px/1 system-ui, sans-serif; cursor: grab; touch-action: none; user-select: none; }
+.planning-marker[aria-pressed="true"] { border: 2px solid var(--wine); background: var(--wine); color: var(--surface); z-index: 1; }
+.planning-marker:active { cursor: grabbing; }
+.planning-marker:focus-visible { outline: 2px solid var(--wine); outline-offset: 3px; z-index: 2; }
+.planning-point-list { margin: 24px 0; }
+.planning-point-list ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.planning-point-list button { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 52px; text-align: left; border: 1px solid var(--border); border-radius: 7px; padding: 10px 14px; background: var(--surface); color: var(--text); font: 14px/1.5 system-ui, sans-serif; cursor: pointer; overflow-wrap: anywhere; }
+.planning-point-list button > span:first-child { min-width: 28px; color: var(--wine); font-variant-numeric: tabular-nums; }
+.planning-point-list button > span:last-child { min-width: 0; }
+.planning-point-list button[aria-pressed="true"] { border-color: var(--wine); background: var(--control); }
+.planning-point-list small { display: block; color: var(--muted); font-size: 12px; }
+.planning-point-editor { padding: 22px; }
+.planning-point-editor .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.campaign-source fieldset:disabled { opacity: .7; }
+@media (max-width: 900px) { .planning-layout { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .source-save-bar > span { flex-basis: 100%; } .source-save-bar .action-button { flex: 1 1 180px; } .planning-board { height: 380px; } .planning-toolbar .action-button { flex: 1 1 150px; } .planning-toolbar > span { flex-basis: 100%; } }

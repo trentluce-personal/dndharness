@@ -16,8 +16,10 @@ try {
     await client.query('INSERT INTO characters(id,user_id,edition_id,name,sheet) VALUES ($1,$2,$3,$4,$5)', [characterId, playerId, 'dnd-5e-2024', 'Rowan Ashford', characterSheet]);
     const state = campaignState({ session: 2, location: 'The Lanternwood', summary: 'A village lantern has gone dark. The party follows a trail of silver leaves.', notes: 'Fictional demo campaign. A quiet forest, an old promise, and a missing light.' });
     await client.query('INSERT INTO campaigns(id,dm_id,edition_id,title,invite_code,state) VALUES ($1,$2,$3,$4,$5,$6)', [campaignId, dmId, 'dnd-5e-2024', 'Demo · The Last Lantern', randomBytes(8).toString('hex').toUpperCase(), state]);
-    await client.query('INSERT INTO campaign_party(campaign_id,character_id,user_id,name,sheet) VALUES ($1,$2,$3,$4,$5)', [campaignId, characterId, playerId, 'Rowan Ashford', characterSheet]);
-    const snapshot = { version: 1, title: 'Demo · The Last Lantern', editionId: 'dnd-5e-2024', status: 'active', dm: { id: dmId, displayName: 'Demo · The Storykeeper' }, state, party: [{ characterId, userId: playerId, name: 'Rowan Ashford', displayName: 'Demo · Rowan', sheet: characterSheet }] };
+    await client.query('INSERT INTO campaign_adventures(campaign_id,title) VALUES ($1,$2)', [campaignId, 'Demo · The Last Lantern']);
+    const campaignSheet = { ...characterSheet, hp: characterSheet.maxHp };
+    await client.query('INSERT INTO campaign_party(campaign_id,character_id,user_id,name,sheet) VALUES ($1,$2,$3,$4,$5)', [campaignId, characterId, playerId, 'Rowan Ashford', campaignSheet]);
+    const snapshot = { version: 1, title: 'Demo · The Last Lantern', editionId: 'dnd-5e-2024', status: 'active', dm: { id: dmId, displayName: 'Demo · The Storykeeper' }, state, party: [{ characterId, userId: playerId, name: 'Rowan Ashford', displayName: 'Demo · Rowan', sheet: campaignSheet }] };
     await client.query('INSERT INTO campaign_saves(id,campaign_id,label,snapshot) VALUES ($1,$2,$3,$4)', [randomUUID(), campaignId, 'Demo · Into the Lanternwood', snapshot]);
   });
   console.log(`Fictional demo created. Accounts: dm@demo.test and player@demo.test\nGenerated password for both: ${password}\nKeep this locally; it is not stored in Git. Change it in Profile if you keep these accounts.`);

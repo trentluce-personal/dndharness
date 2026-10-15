@@ -46,6 +46,13 @@ local tooling so each app can later be containerized independently.
 - Use `web-feature` for nontrivial web features and `ui-quality` for UI controls,
   forms, responsive layouts, and interaction quality. The approved visual and
   motion conventions are in `docs/design.md`.
+- For substantial features with separable aspects, load `feature-dispatch` and
+  use focused agents in parallel when available. Agree shared contracts and
+  exclusive file ownership first; the coordinating agent owns integration and
+  final verification. Small or inseparable edits stay with one implementer.
+  The default `dispatcher` is read-only and delegates all edits and runtime
+  checks, including integration and documentation. Workers follow their scoped
+  assignment without spawning more agents; they do not re-dispatch the feature.
 - For nontrivial changes to accounts, permissions, migrations, campaign saves,
   or shared controls, use one independent `app-reviewer` pass when available.
   Give it the acceptance criteria, scope, and verification evidence. Small edits
@@ -56,7 +63,10 @@ local tooling so each app can later be containerized independently.
 OpenCode automatically loads this file. Repository settings are in
 opencode.json; authenticate GitHub Copilot through `/connect`, not through
 credentials in tracked files. Select an available model with `/models`.
-The project-local `/small-feature` command lives in `.opencode/commands/`.
+The project-local `/small-feature` and `/dispatch-feature` commands live in
+`.opencode/commands/`. The default `dispatcher` primary agent coordinates work
+using the `feature-dispatch` skill and existing focused subagents; it cannot
+edit files and only has narrow Git-inspection shell access.
 The frontend review skill lives in `.opencode/skills/frontend-review/`.
 Additional skills are `ui-quality` and `web-feature`; the read-only reviewer is
 `.opencode/agents/app-reviewer.md`. Restart OpenCode after editing these files.

@@ -1,0 +1,50 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Application: Start",
+            "type": "process",
+            "command": "docker",
+            "args": ["compose", "up", "-d", "--wait"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared" }
+        },
+        {
+            "label": "Application: Stop",
+            "type": "process",
+            "command": "docker",
+            "args": ["compose", "stop"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared" }
+        },
+        {
+            "label": "Application: Rebuild and start",
+            "type": "process",
+            "command": "docker",
+            "args": ["compose", "up", "--build", "-d", "--wait"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared" }
+        },
+        {
+            "label": "Application: Status",
+            "type": "process",
+            "command": "docker",
+            "args": ["compose", "ps", "--all"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared" }
+        },
+        {
+            "label": "Application: Logs",
+            "type": "process",
+            "command": "docker",
+            "args": ["compose", "logs", "-f", "web", "api"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "dedicated" }
+        }
+    ]
+}

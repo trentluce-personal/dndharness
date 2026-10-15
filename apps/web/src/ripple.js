@@ -1,6 +1,6 @@
 // A paint-only effect: actions never wait for the animation to finish.
 export function ripple(event) {
-  if (document.documentElement.dataset.motion === 'reduce') return;
+  if (document.documentElement.dataset.motion === 'reduce' || event.currentTarget.disabled) return;
   if (event.type === 'pointerdown' && event.button !== 0) return;
   const target = event.currentTarget;
   const bounds = target.getBoundingClientRect();
@@ -19,7 +19,7 @@ export function ripple(event) {
   target.querySelectorAll('.interaction-ripple').forEach((previous) => previous.remove());
   target.append(wave);
   const animation = wave.animate([
-    { transform: 'scale(0)', opacity: .22 },
+    { transform: 'scale(0)', opacity: target.classList.contains('action-button') ? .48 : .22 },
     { transform: 'scale(1)', opacity: 0 },
   ], { duration: 580, easing: 'cubic-bezier(.2, .7, .3, 1)' });
   animation.finished.then(() => wave.remove(), () => wave.remove());

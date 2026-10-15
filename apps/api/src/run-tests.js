@@ -10,7 +10,7 @@ try {
   const exists = await admin.query("SELECT 1 FROM pg_database WHERE datname='dndharness_test'");
   if (!exists.rowCount) await admin.query('CREATE DATABASE dndharness_test');
 } finally { await admin.end(); }
-const child = spawn(process.execPath, ['--test', 'test/workflows.test.js'], {
+const child = spawn(process.execPath, ['--test', '--test-concurrency=1', 'test/workflows.test.js', 'test/adventure.test.js'], {
   stdio: 'inherit', env: { ...process.env, DATABASE_URL: target.toString() },
 });
 child.on('exit', (code) => { process.exitCode = code ?? 1; });

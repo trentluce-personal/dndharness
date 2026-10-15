@@ -1,8 +1,13 @@
 ---
 description: Build the smallest useful increment with the project's edition-agnostic design principles.
+agent: dispatcher
 ---
 
 Implement this feature: $ARGUMENTS
+
+Load feature-dispatch. As the read-only dispatcher, delegate this increment to
+one scoped implementation worker and review its result and focused checks.
+Delegate any integration edits or runtime verification; do not edit yourself.
 
 Read AGENTS.md and README.md first. Load the web-feature skill for its proportional
 acceptance-to-verification workflow. Choose the smallest working implementation

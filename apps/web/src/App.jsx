@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { api } from './api.js';
 import AccountWorkspace from './AccountWorkspace.jsx';
-import EditionPicker from './EditionPicker.jsx';
 import { ripple } from './ripple.js';
+import useWorkspaceNavigation from './useWorkspaceNavigation.jsx';
 
 function TableMark() {
   return (
@@ -16,6 +16,7 @@ function TableMark() {
 }
 
 export default function App() {
+  const navigation = useWorkspaceNavigation();
   const [editions, setEditions] = useState([]);
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
@@ -64,8 +65,6 @@ export default function App() {
   }, [theme]);
 
   const [editionId, setEditionId] = useState('');
-  const edition = editions.find((entry) => entry.id === editionId);
-  const [editionChanged, setEditionChanged] = useState(false);
 
   function toggleTheme(event) {
     const changeTheme = () => setTheme((current) => current === 'dark' ? 'light' : 'dark');
@@ -107,12 +106,14 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <header className="site-header">
         <a className="wordmark" href="/" aria-label="dndharness home">
           <span className="brand-mark"><TableMark /></span>
           <span className="brand-name">dnd<span>harness</span></span>
         </a>
         <div className="header-actions">
+          <div id="account-header-actions" />
           <span className="local-label"><span aria-hidden="true" /> Your local table</span>
           <button className="motion-toggle" type="button" aria-pressed={motion === 'full'}
             onClick={() => setMotion((current) => current === 'full' ? 'reduce' : 'full')}>
@@ -143,45 +144,8 @@ export default function App() {
         </div>
       </header>
 
-      <main>
-        {!user && <><section className="welcome" aria-labelledby="welcome-title">
-          <p className="eyebrow hero-eyebrow"><span aria-hidden="true">✧</span> Gather your party <span aria-hidden="true">✧</span></p>
-          <h1 id="welcome-title">Every adventure<br />starts <em>at the table.</em></h1>
-          <p className="intro">Good company. A little imagination. A story worth telling.<br className="desktop-break" /> Your own corner of the Dungeons &amp; Dragons world.</p>
-        </section>
-
-        <section className="table-card" aria-labelledby="table-title">
-          <div className="table-art" aria-hidden="true">
-            <span className="art-caption">A world of possibility</span>
-            <div className="dice-seal"><TableMark /></div>
-            <div className="art-bottom"><span>✧</span><p>One table.<br /><em>Endless stories.</em></p></div>
-          </div>
-          <div className="table-content">
-            <p className="eyebrow card-eyebrow"><span className="chapter-number" aria-hidden="true">01</span> Set the scene</p>
-            <h2 id="table-title">Choose your rules.</h2>
-            <p>Every party has its own way to play.<br />Choose the edition that feels like home.</p>
-            <div className="picker-wrap">
-              <EditionPicker editions={editions} value={editionId} onChange={(id) => {
-                if (id !== editionId) {
-                  setEditionId(id);
-                  setEditionChanged(true);
-                }
-              }} />
-              {editionChanged && <span className="selection-glimmer" key={editionId} aria-hidden="true" />}
-            </div>
-            <div className="edition-summary" role="status" aria-live="polite" aria-atomic="true">
-              {edition ? (
-                <div className="edition-details" key={edition.id}>
-                  <span className="edition-tag"><span aria-hidden="true">✦</span> {edition.shortName}</span>
-                  <p>{edition.description}</p>
-                </div>
-              ) : <p>No editions added yet.</p>}
-            </div>
-          </div>
-        </section>
-
-        <p className="table-note"><span aria-hidden="true">✧</span> A small beginning. Room for a grand adventure.</p></>}
-        {connectionError ? <div className="connection-error" role="alert"><p>The table is temporarily unavailable: {connectionError}</p><button type="button" className="action-button secondary" onClick={() => setRetry((current) => current + 1)}>Try again</button></div> : !ready ? <p className="loading-note" role="status">Connecting to your table…</p> : <AccountWorkspace user={user} setUser={setUser} editions={editions} editionId={editionId} />}
+      <main id="main-content" tabIndex={-1}>
+        {connectionError ? <div className="connection-error" role="alert"><p>The table is temporarily unavailable: {connectionError}</p><button type="button" className="action-button secondary" onClick={() => setRetry((current) => current + 1)}>Try again</button></div> : !ready ? <p className="loading-note" role="status">Connecting to your table…</p> : <AccountWorkspace key={user?.id ?? 'signed-out'} user={user} setUser={setUser} editions={editions} editionId={editionId} navigation={navigation} />}
       </main>
 
       <footer><span>dndharness</span><span>Built for the stories you tell together.</span></footer>

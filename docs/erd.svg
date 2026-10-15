@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 830" width="1080" height="830" font-family="Georgia, 'Times New Roman', serif">
+  <defs>
+    <style>
+      .card { fill: #fffcf7; stroke: #8f8274; stroke-width: 1.2; }
+      .card-dark { fill: #fbeedc; stroke: #b98d2e; stroke-width: 1.4; }
+      .ent { font: bold 15px Georgia, serif; fill: #3c2f24; }
+      .col { font: 12px 'Consolas', 'SFMono-Regular', monospace; fill: #4a413a; }
+      .col-key { font-weight: bold; fill: #6a1b12; }
+      .col-type { fill: #8a7a68; }
+      .tag { font: 9px 'Consolas', monospace; fill: #8a5d1e; }
+      .rel { stroke: #a19382; stroke-width: 1.4; fill: none; }
+      .rel-label { font: italic 11px Georgia, serif; fill: #74695e; }
+      .header-band { fill: #823b45; }
+      .header-band-soft { fill: #3c2f24; }
+      .header-text { font: bold 15px Georgia, serif; fill: #f6f2eb; }
+      .footnote { font: italic 11px Georgia, serif; fill: #74695e; }
+    </style>
+    <marker id="crows" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1,6.8 L11,1 L11,6.8 Z M1,6.8 L11,6.8 Z M1,6.8 L11,12.6 L11,6.8 Z" fill="#a19382" stroke="none"/>
+    </marker>
+  </defs>
+
+  <rect x="2" y="2" width="1076" height="826" rx="10" fill="#f6f2eb" stroke="#d9cfbe" stroke-width="1.5"/>
+  <text x="540" y="40" text-anchor="middle" class="ent" style="font-size:22px">dndharness &#8212; Entity-Relationship Diagram</text>
+  <text x="540" y="60" text-anchor="middle" class="footnote">PostgreSQL &#183; crow&#39;s-foot notation &#183; source: apps/db/migrations</text>
+
+  <!-- ===================== editions ===================== -->
+  <g transform="translate(30, 90)">
+    <rect x="0" y="0" width="240" height="190" rx="6" class="card"/>
+    <path d="M0,6 Q0,0 6,0 L234,0 Q240,0 240,6 L240,30 L0,30 Z" class="header-band"/>
+    <text x="12" y="20" class="header-text">editions</text>
+    <text x="12" y="48" class="col"><tspan class="col-key">id</tspan> <tspan class="col-type">text PK</tspan></text>
+    <text x="12" y="68" class="col">name text</text>
+    <text x="12" y="88" class="col">short_name text</text>
+    <text x="12" y="108" class="col">description text</text>
+    <text x="12" y="128" class="col">is_default bool</text>
+    <text x="12" y="148" class="col">sort_order int</text>
+    <line x1="0" y1="160" x2="240" y2="160" stroke="#e1d7c8"/>
+    <text x="12" y="176" class="tag">one_default_edition partial unique</text>
+  </g>
+
+  <!-- ===================== users ===================== -->
+  <g transform="translate(420, 90)">
+    <rect x="0" y="0" width="240" height="210" rx="6" class="card-dark"/>
+    <path d="M0,6 Q0,0 6,0 L234,0 Q240,0 240,6 L240,30 L0,30 Z" class="header-band-soft"/>
+    <text x="12" y="20" class="header-text">users</text>
+    <text x="12" y="48" class="col"><tspan class="col-key">id</tspan> <tspan class="col-type">uuid PK</tspan></text>
+    <text x="12" y="68" class="col">email text UK</text>
+    <text x="12" y="88" class="col">password_hash text</text>
+    <text x="12" y="108" class="col">display_name text</text>
+    <text x="12" y="128" class="col">real_name text</text>
+    <text x="12" y="148" class="col">bio text</text>
+    <text x="12" y="168" class="col">created_at timestamptz</text>
+    <line x1="0" y1="182" x2="240" y2="182" stroke="#e1d7c8"/>
+    <text x="12" y="198" class="tag">owns / DMs / joins</text>
+  </g>
+
+  <!-- ===================== characters ===================== -->
+  <g transform="translate(30, 360)">
+    <rect x="0" y="0" width="260" height="220" rx="6" class="card"/>
+    <path d="M0,6 Q0,0 6,0 L254,0 Q260,0 260,6 L260,30 L0,30 Z" class="header-band"/>
+    <text x="12" y="20" class="header-text">characters</text>
+    <text x="12" y="48" class="col"><tspan class="col-key">id</tspan> <tspan class="col-type">uuid PK</tspan></text>
+    <text x="12" y="68" class="col"><tspan class="col-key">user_id</tspan> <tspan class="col-type">uuid FK</tspan></text>
+    <text x="12" y="88" class="col"><tspan class="col-key">edition_id</tspan> <tspan class="col-type">text FK</tspan></text>
+    <text x="12" y="108" class="col">name text</text>
+    <text x="12" y="128" class="col">sheet jsonb</text>
+    <text x="12" y="148" class="col">created_at timestamptz</text>
+    <text x="12" y="168" class="col">updated_at timestamptz</text>
+    <text x="12" y="188" class="col">deleted_at timestamptz</text>
+    <line x1="0" y1="202" x2="260" y2="202" stroke="#e1d7c8"/>
+    <text x="12" y="214" class="tag" style="font-size:8px">deleted_at = soft delete (002)</text>
+  </g>
+
+  <!-- ===================== sessions ===================== -->
+  <g transform="translate(30, 640)">
+    <rect x="0" y="0" width="240" height="110" rx="6" class="card"/>
+    <path d="M0,6 Q0,0 6,0 L234,0 Q240,0 240,6 L240,30 L0,30 Z" class="header-band"/>
+    <text x="12" y="20" class="header-text">sessions</text>
+    <text x="12" y="48" class="col"><tspan class="col-key">token_hash</tspan> <tspan class="col-type">text PK</tspan></text>
+    <text x="12" y="68" class="col"><tspan class="col-key">user_id</tspan> <tspan class="col-type">uuid FK</tspan></text>
+    <text x="12" y="88" class="col">expires_at timestamptz</text>
+    <line x1="0" y1="100" x2="240" y2="100" stroke="#e1d7c8"/>
+    <text x="12" y="106" class="tag" style="font-size:8px">ON DELETE CASCADE</text>
+  </g>
+
+  <!-- ===================== campaigns ===================== -->
+  <g transform="translate(420, 360)">
+    <rect x="0" y="0" width="250" height="220" rx="6" class="card"/>
+    <path d="M0,6 Q0,0 6,0 L244,0 Q250,0 250,6 L250,30 L0,30 Z" class="header-band-soft"/>
+    <text x="12" y="20" class="header-text">campaigns</text>
+    <text x="12" y="48" class="col"><tspan class="col-key">id</tspan> <tspan class="col-type">uuid PK</tspan></text>
+    <text x="12" y="68" class="col"><tspan class="col-key">dm_id</tspan> <tspan class="col-type">uuid FK</tspan></text>
+    <text x="12" y="88" class="col"><tspan class="col-key">edition_id</tspan> <tspan class="col-type">text FK</tspan></text>
+    <text x="12" y="108" class="col">title text</text>
+    <text x="12" y="128" class="col">invite_code text UK</text>
+    <text x="12" y="148" class="col">status text</text>
+    <text x="12" y="168" class="col">state jsonb</text>
+    <text x="12" y="188" class="col">updated_at timestamptz</text>
+    <line x1="0" y1="202" x2="250" y2="202" stroke="#e1d7c8"/>
+    <text x="12" y="214" class="tag" style="font-size:8px">status: active | archived</text>
+  </g>
+
+  <!-- ===================== campaign_party ===================== -->
+  <g transform="translate(760, 170)">
+    <rect x="0" y="0" width="290" height="212" rx="6" class="card"/>
+    <path d="M0,6 Q0,0 6,0 L284,0 Q290,0 290,6 L290,30 L0,30 Z" class="header-band"/>
+    <text x="12" y="20" class="header-text">campaign_party</text>
+    <text x="12" y="48" class="col"><tspan class="col-key">campaign_id</tspan> <tspan class="col-type">uuid PK FK</tspan></text>
+    <text x="12" y="68" class="col"><tspan class="col-key">character_id</tspan> <tspan class="col-type">uuid PK FK</tspan></text>
+    <text x="12" y="88" class="col"><tspan class="col-key">user_id</tspan> <tspan class="col-type">uuid FK</tspan></text>
+    <text x="12" y="108" class="col">name text</text>
+    <text x="12" y="128" class="col">sheet jsonb</text>
+    <line x1="0" y1="142" x2="290" y2="142" stroke="#e1d7c8"/>
+    <text x="12" y="158" class="tag" style="font-size:8px">PK (campaign_id, character_id)</text>
+    <text x="12" y="172" class="tag" style="font-size:8px">name/sheet = campaign-local copy</text>
+    <text x="12" y="186" class="tag" style="font-size:8px">starts at sheet.maxHp</text>
+  </g>
+
+  <!-- ===================== campaign_saves ===================== -->
+  <g transform="translate(760, 470)">
+    <rect x="0" y="0" width="260" height="190" rx="6" class="card"/>
+    <path d="M0,6 Q0,0 6,0 L254,0 Q260,0 260,6 L260,30 L0,30 Z" class="header-band"/>
+    <text x="12" y="20" class="header-text">campaign_saves</text>
+    <text x="12" y="48" class="col"><tspan class="col-key">id</tspan> <tspan class="col-type">uuid PK</tspan></text>
+    <text x="12" y="68" class="col"><tspan class="col-key">campaign_id</tspan> <tspan class="col-type">uuid FK</tspan></text>
+    <text x="12" y="88" class="col">label text</text>
+    <text x="12" y="108" class="col">snapshot jsonb</text>
+    <text x="12" y="128" class="col">created_at timestamptz</text>
+    <line x1="0" y1="142" x2="260" y2="142" stroke="#e1d7c8"/>
+    <text x="12" y="158" class="tag" style="font-size:8px">append-only: UPDATE/DELETE rejected</text>
+    <text x="12" y="172" class="tag" style="font-size:8px">by immutable_saves trigger</text>
+  </g>
+
+  <!-- ===================== relationships ===================== -->
+
+  <!-- editions -> characters (1 -> N) -->
+  <path d="M160,280 L160,360" class="rel" marker-end="url(#crows)"/>
+  <text x="170" y="322" class="rel-label">fixes edition</text>
+
+  <!-- editions -> campaigns (1 -> N), hops over users->sessions and users->characters -->
+  <path d="M270,130 L385,130 L385,153 A6,6 0 0 1 385,165 L385,244 A6,6 0 0 1 385,256 L385,340 L505,340 L505,360" class="rel" marker-end="url(#crows)"/>
+  <text x="300" y="124" class="rel-label">fixes edition</text>
+
+  <!-- users -> sessions (1 -> N), hop over characters->party bottom route -->
+  <path d="M420,160 L305,160 L305,606 A6,6 0 0 1 305,618 L305,695 L270,695" class="rel" marker-end="url(#crows)"/>
+  <text x="312" y="176" class="rel-label">has</text>
+
+  <!-- users -> characters (1 -> N) -->
+  <path d="M420,250 L350,250 L350,470 L290,470" class="rel" marker-end="url(#crows)"/>
+  <text x="354" y="266" class="rel-label">owns</text>
+
+  <!-- users -> campaigns (1 -> N, DM) -->
+  <path d="M575,300 L575,360" class="rel" marker-end="url(#crows)"/>
+  <text x="587" y="332" class="rel-label">DMs</text>
+
+  <!-- users -> campaign_party (1 -> N, joined) -->
+  <path d="M660,180 L715,180 L715,270 L760,270" class="rel" marker-end="url(#crows)"/>
+  <text x="664" y="171" class="rel-label">joined</text>
+
+  <!-- characters -> campaign_party (1 -> N, copied in) via bottom + right margin -->
+  <path d="M160,580 L160,612 L1054,612 L1054,285 L1050,285" class="rel" marker-end="url(#crows)"/>
+  <text x="470" y="602" class="rel-label">copied into campaign</text>
+
+  <!-- campaigns -> campaign_party (1 -> N) -->
+  <path d="M670,390 L732,390 L732,330 L760,330" class="rel" marker-end="url(#crows)"/>
+  <text x="675" y="382" class="rel-label">party of</text>
+
+  <!-- campaigns -> campaign_saves (1 -> N) -->
+  <path d="M670,510 L715,510 L715,545 L760,545" class="rel" marker-end="url(#crows)"/>
+  <text x="676" y="502" class="rel-label">checkpointed</text>
+
+  <!-- ===================== legend ===================== -->
+  <g transform="translate(30, 774)">
+    <line x1="0" y1="0" x2="40" y2="0" class="rel"/>
+    <text x="48" y="4" class="col" style="font-size:11px">one</text>
+    <path d="M75,-2 L105,-2" class="rel" marker-end="url(#crows)"/>
+    <text x="113" y="4" class="col" style="font-size:11px">many (crow&#39;s foot)</text>
+    <rect x="0" y="18" width="16" height="11" rx="2" fill="#fffcf7" stroke="#8f8274"/>
+    <text x="24" y="27" class="col" style="font-size:11px">relational data</text>
+    <rect x="145" y="18" width="16" height="11" rx="2" fill="#fbeedc" stroke="#b98d2e" stroke-width="1.2"/>
+    <text x="169" y="27" class="col" style="font-size:11px">anchor entity</text>
+    <text x="0" y="43" class="footnote" style="font-size:10px">PK = primary key &#183; FK = foreign key &#183; UK = unique &#183; jsonb = structured JSON column</text>
+  </g>
+</svg>
