@@ -2,17 +2,16 @@ import { useState } from 'react';
 import Button from './Button.jsx';
 import Dialog from './Dialog.jsx';
 import { SourceReload } from './CampaignOverview.jsx';
-import { campaignUrl } from './workspaceRoutes.js';
-import { adventureTitle, boardPosition, boundedCoordinate, maxPoints, newPlanningPoint, pointKinds, useCampaignAdventure } from './campaignPlanning.js';
+import { createUiId } from './uiId.js';
+import { adventureTitle, boardPosition, boundedCoordinate, coordinateLabel, maxPoints, newPlanningPoint, pointKinds, useCampaignAdventure } from './campaignPlanning.js';
 import './campaignPlanning.css';
 
-export default function CampaignPlanningCanvas({ campaign, user, navigation, onUpdate }) {
-  const isDm = campaign.dm.id === user.id;
-  const source = useCampaignAdventure({ campaign, enabled: isDm, navigation, onUpdate });
+export default function CampaignPlanningCanvas({ campaign, navigation, onUpdate }) {
   const [selectedId, setSelectedId] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [drag, setDrag] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const source = useCampaignAdventure({ campaign, enabled: true, navigation, onUpdate, interactionOpen: !!deleting || !!drag || placing });
   const canvas = source.draft?.canvas;
   const points = canvas?.points ?? [];
   const selected = points.find((point) => point.id === selectedId);
@@ -25,7 +24,7 @@ export default function CampaignPlanningCanvas({ campaign, user, navigation, onU
   }
   function addPoint(position) {
     if (source.busy || full) return;
-    const point = newPlanningPoint(crypto.randomUUID(), position);
+    const point = newPlanningPoint(createUiId(), position);
     editCanvas({ points: [...points, point] });
     setSelectedId(point.id); setPlacing(false);
   }
@@ -37,9 +36,8 @@ export default function CampaignPlanningCanvas({ campaign, user, navigation, onU
     const step = event.shiftKey ? 5 : 1;
     editPoint(point.id, { x: boundedCoordinate(point.x + vector[0] * step), y: boundedCoordinate(point.y + vector[1] * step) });
   }
-  if (!isDm) return <section className="campaign-source workspace-panel"><h1>Planning canvas unavailable</h1><p className="form-note">Only this campaign’s dungeon master can open this destination.</p><a href={campaignUrl(campaign.id)}>Back to campaign overview</a></section>;
   return <section className="campaign-source campaign-planning">
-    <header className="source-heading"><p className="eyebrow">{adventureTitle(campaign)}</p><h1>Planning canvas</h1><p><span className="quiet-badge">Private · Dungeon master only</span></p><p>Arrange your adventure’s story points freely. These are source notes, not party progress or a required story order.</p><a href={campaignUrl(campaign.id)}>Back to campaign overview</a></header>
+    <header className="source-heading"><p className="eyebrow">{adventureTitle(campaign)}</p><h1>Planning canvas</h1><p><span className="quiet-badge">Shared preparation · Spoilers</span></p><p>Anyone can edit these source notes. They are not confidential, party progress, or a required story order.</p></header>
     <>
       {source.error && <p role="alert" className="form-error">{source.error}</p>}
       {source.loading ? <p className="loading-note" role="status">Loading planning canvas…</p> : !source.draft ? <Button className="secondary" onClick={source.load}>Try loading source again</Button> : !canvas ? <section className="workspace-panel"><h2>A blank board to begin</h2><p className="form-note">Create an empty planning canvas, then add your own points.</p><Button disabled={source.busy} onClick={() => source.save({ ...source.draft, canvas: { title: 'Planning canvas', points: [] } })}>{source.busy ? 'Creating…' : 'Create planning canvas'}</Button></section> : <>
@@ -68,7 +66,7 @@ export default function CampaignPlanningCanvas({ campaign, user, navigation, onU
               {!selected ? <p className="form-note">Select a point on the board or in the list. Its details will appear here.</p> : <div className="editor-form">
                 <label>Point title<input required maxLength={150} value={selected.title} onChange={(event) => editPoint(selected.id, { title: event.target.value })} /></label>
                 <label>Kind<select value={selected.kind} onChange={(event) => editPoint(selected.id, { kind: event.target.value })}>{Object.entries(pointKinds).map(([kind, label]) => <option key={kind} value={kind}>{label}</option>)}</select></label>
-                <div className="form-grid">{['x', 'y'].map((axis) => <label key={axis}>{axis.toUpperCase()} (%)<input type="number" required min={0} max={100} step="any" value={selected[axis]} onChange={(event) => { if (event.target.value !== '' && Number.isFinite(event.target.valueAsNumber)) editPoint(selected.id, { [axis]: boundedCoordinate(event.target.valueAsNumber) }); }} /></label>)}</div>
+                <div className="form-grid">{['x', 'y'].map((axis) => <label key={axis}>{axis.toUpperCase()} (%)<input type="number" required min={0} max={100} step="any" value={coordinateLabel(selected[axis])} onChange={(event) => { if (event.target.value !== '' && Number.isFinite(event.target.valueAsNumber)) editPoint(selected.id, { [axis]: boundedCoordinate(event.target.valueAsNumber) }); }} /></label>)}</div>
                 <label>Notes<textarea rows={5} maxLength={4000} value={selected.notes} onChange={(event) => editPoint(selected.id, { notes: event.target.value })} /></label>
                 <label>Location reference<input maxLength={200} value={selected.location} onChange={(event) => editPoint(selected.id, { location: event.target.value })} /></label>
                 <label>NPC / enemy references<textarea rows={4} maxLength={4000} value={selected.characters} onChange={(event) => editPoint(selected.id, { characters: event.target.value })} aria-describedby="point-reference-hint" /></label><p className="field-hint" id="point-reference-hint">Manual names and references for your preparation.</p>

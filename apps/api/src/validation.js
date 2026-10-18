@@ -59,6 +59,7 @@ export function sheet(value, { campaign = false } = {}) {
   return result;
 }
 export function campaignState(value = {}) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail('Campaign state must be an object.');
   return {
     session: integer(value.session ?? 1, 'Session number', 1, 100000),
     location: text(value.location ?? '', 'Location', 200),

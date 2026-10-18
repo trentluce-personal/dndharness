@@ -1,7 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { api } from './api.js';
-import AccountWorkspace from './AccountWorkspace.jsx';
+import SharedWorkspace from './SharedWorkspace.jsx';
 import { ripple } from './ripple.js';
 import useWorkspaceNavigation from './useWorkspaceNavigation.jsx';
 
@@ -17,22 +16,6 @@ function TableMark() {
 
 export default function App() {
   const navigation = useWorkspaceNavigation();
-  const [editions, setEditions] = useState([]);
-  const [user, setUser] = useState(null);
-  const [ready, setReady] = useState(false);
-  const [connectionError, setConnectionError] = useState('');
-  const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    let live = true;
-    setConnectionError('');
-    Promise.all([api('/editions'), api('/auth/me')]).then(([catalog, account]) => {
-      if (!live) return;
-      setEditions(catalog);
-      setEditionId((current) => catalog.some((entry) => entry.id === current) ? current : (catalog.find((entry) => entry.isDefault) ?? catalog[0])?.id ?? '');
-      setUser(account.user); setReady(true);
-    }).catch((error) => { if (live) setConnectionError(error.message); });
-    return () => { live = false; };
-  }, [retry]);
   const themeTransition = useRef(null);
   const [motion, setMotion] = useState(() => {
     try {
@@ -63,8 +46,6 @@ export default function App() {
       // Keep the chosen theme for this session if storage is unavailable.
     }
   }, [theme]);
-
-  const [editionId, setEditionId] = useState('');
 
   function toggleTheme(event) {
     const changeTheme = () => setTheme((current) => current === 'dark' ? 'light' : 'dark');
@@ -113,8 +94,6 @@ export default function App() {
           <span className="brand-name">dnd<span>harness</span></span>
         </a>
         <div className="header-actions">
-          <div id="account-header-actions" />
-          <span className="local-label"><span aria-hidden="true" /> Your local table</span>
           <button className="motion-toggle" type="button" aria-pressed={motion === 'full'}
             onClick={() => setMotion((current) => current === 'full' ? 'reduce' : 'full')}>
             {motion === 'full' ? 'Motion on' : 'Enable animations'}
@@ -145,7 +124,7 @@ export default function App() {
       </header>
 
       <main id="main-content" tabIndex={-1}>
-        {connectionError ? <div className="connection-error" role="alert"><p>The table is temporarily unavailable: {connectionError}</p><button type="button" className="action-button secondary" onClick={() => setRetry((current) => current + 1)}>Try again</button></div> : !ready ? <p className="loading-note" role="status">Connecting to your table…</p> : <AccountWorkspace key={user?.id ?? 'signed-out'} user={user} setUser={setUser} editions={editions} editionId={editionId} navigation={navigation} />}
+        <SharedWorkspace navigation={navigation} />
       </main>
 
       <footer><span>dndharness</span><span>Built for the stories you tell together.</span></footer>

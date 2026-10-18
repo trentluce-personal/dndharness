@@ -1,16 +1,17 @@
 import Button from './Button.jsx';
 import { campaignUrl } from './workspaceRoutes.js';
 import { adventureTitle, adventureSynopsis } from './campaignPlanning.js';
+import { SessionAction } from './LiveSessions.jsx';
 
-export default function CampaignLibrary({ campaigns, user, editionName, onJoin, onCreate }) {
+export default function CampaignLibrary({ campaigns, sessions = [], editionName, onCreate }) {
   return <section className="campaign-library" aria-labelledby="campaign-library-title">
     <div className="campaign-library-intro">
       <div><p className="eyebrow">Your adventure collection</p><h1 id="campaign-library-title">Campaign library</h1><p>Saved adventures with your group. Opening a campaign doesn’t start a live game.</p></div>
-      <div className="heading-actions"><Button className="secondary" onClick={onJoin}>Join with code</Button><Button onClick={onCreate}>New campaign</Button></div>
+       <div className="heading-actions"><Button onClick={onCreate}>New campaign</Button></div>
     </div>
     {campaigns.length === 0 ? <div className="campaign-library-empty">
       <span aria-hidden="true">✧</span><h2>Your first adventure belongs here</h2>
-      <p>Create a saved campaign to prepare an adventure as its dungeon master (DM), or use an invite code to join an existing campaign with your character.</p>
+      <p>Create a shared campaign, prepare its adventure, then import character sheets directly into its party. Everyone using this app can edit and save.</p>
     </div> : <>
       <p className="campaign-library-caption">Your saved campaigns · {campaigns.length}</p>
       <div className="campaign-library-grid">{campaigns.map((campaign) => <article className="campaign-folio" key={campaign.id}>
@@ -23,12 +24,12 @@ export default function CampaignLibrary({ campaigns, user, editionName, onJoin, 
         <div className="campaign-folio-content">
           <p className="campaign-folio-summary">{adventureSynopsis(campaign) || 'No player-safe synopsis yet.'}</p>
           <dl className="campaign-folio-metadata">
-            <div><dt>Dungeon master (DM)</dt><dd>{campaign.dm.displayName}</dd></div>
-            <div><dt>Your role</dt><dd>{campaign.dm.id === user.id ? 'Dungeon master (DM)' : 'Player'}</dd></div>
+            <div><dt>Access</dt><dd>Shared · Anyone can edit</dd></div>
             <div><dt>Library state</dt><dd>{campaign.status === 'archived' ? 'Archived' : 'In library'}</dd></div>
           </dl>
           {campaign.status === 'archived' && <p className="campaign-folio-archive">Still accessible. New characters cannot be added while archived.</p>}
           <a className="action-button secondary campaign-folio-open" href={campaignUrl(campaign.id)} aria-label={`Open campaign: ${adventureTitle(campaign)}`}>Open campaign <span aria-hidden="true">→</span></a>
+          <SessionAction campaign={campaign} sessions={sessions} />
         </div>
       </article>)}</div>
     </>}

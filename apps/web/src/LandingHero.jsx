@@ -24,16 +24,15 @@ function AdventureMap() {
   </svg>;
 }
 
-export default function LandingHero({ onRegister, onLogin }) {
-  return <section className="landing-hero" aria-labelledby="welcome-title">
+export default function LandingHero({ onHost }) {
+  return <><section className="landing-hero" aria-labelledby="home-title">
     <div className="hero-map-panel"><AdventureMap /><p className="map-caption"><span aria-hidden="true">✧</span> One table. Endless stories.</p></div>
     <div className="hero-copy">
       <p className="eyebrow">Gather your party</p>
-      <h1 id="welcome-title">Every adventure<br />starts <em>at the table.</em></h1>
-      <p className="hero-promise">Your characters. Your party.<br /> Your next chapter.</p>
-      <p className="hero-description">A local Dungeons &amp; Dragons organizer for character sheets, shared adventures, and the stories you tell together.</p>
-      <div className="hero-account-actions"><Button onClick={onRegister}>Create an account <span aria-hidden="true">✦</span></Button><Button className="secondary" onClick={onLogin}>Log in</Button></div>
-      <p className="hero-account-note">Your account and adventures stay on this server.</p>
+      <h1 id="home-title">Every adventure<br />starts <em>at the table.</em></h1>
+      <p className="hero-promise">Host a table or join your friends.</p>
+      <p className="hero-description">Bring everyone together for a local Dungeons &amp; Dragons session.</p>
+      <div className="hero-session-actions"><Button id="home-host-session" onClick={onHost}>Host a session <span aria-hidden="true">✦</span></Button></div>
     </div>
-  </section>;
+  </section><div className="landing-divider" aria-hidden="true"><span />✧<span /></div></>;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { interceptLink, workspaceRoute } from './workspaceRoutes.js';
+import { createUiId } from './uiId.js';
 
 export default function useWorkspaceNavigation() {
   const [path, setPath] = useState(window.location.pathname);
@@ -7,7 +8,7 @@ export default function useWorkspaceNavigation() {
   const [actionBusy, setActionBusy] = useState(false);
   const protection = useRef({ dirty: false, busy: false });
   const position = useRef(history.state?.workspaceIndex ?? 0);
-  const epoch = useRef(history.state?.workspaceEpoch ?? crypto.randomUUID());
+  const epoch = useRef(history.state?.workspaceEpoch ?? createUiId());
   const currentUrl = useRef(location.pathname + location.search + location.hash);
   const restoreTimer = useRef(null);
   const restoring = useRef(false);
@@ -72,7 +73,7 @@ export default function useWorkspaceNavigation() {
       if (restoring.current) {
         // Rapid traversal or an unexpected native entry: recover without another go().
         clearTimeout(restoreTimer.current); restoring.current = false;
-        epoch.current = crypto.randomUUID(); position.current = 0;
+        epoch.current = createUiId(); position.current = 0;
         history.replaceState({ workspaceIndex: position.current, workspaceEpoch: epoch.current }, '', currentUrl.current);
         return;
       }
@@ -80,7 +81,7 @@ export default function useWorkspaceNavigation() {
       if (samePage && !approvedPop.current) {
         // Hash entries do not unmount the draft. Native entries have no distance
         // we can safely infer; start a new indexed segment instead of treating null as 0.
-        if (target === null) { epoch.current = crypto.randomUUID(); position.current = 0; stamp(); }
+        if (target === null) { epoch.current = createUiId(); position.current = 0; stamp(); }
         else position.current = target;
         currentUrl.current = url;
         return;
@@ -92,7 +93,7 @@ export default function useWorkspaceNavigation() {
         const delta = target === null ? null : target - position.current;
         const fallback = () => {
           restoring.current = false;
-          epoch.current = crypto.randomUUID(); position.current = 0;
+          epoch.current = createUiId(); position.current = 0;
           history.replaceState({ workspaceIndex: 0, workspaceEpoch: epoch.current }, '', currentUrl.current);
         };
         if (delta) {
@@ -113,7 +114,7 @@ export default function useWorkspaceNavigation() {
         }
         return;
       }
-      if (target === null) { epoch.current = crypto.randomUUID(); position.current = 0; stamp(); }
+      if (target === null) { epoch.current = createUiId(); position.current = 0; stamp(); }
       else position.current = target;
       currentUrl.current = url;
       setPath(location.pathname);

@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
 import Button from './Button.jsx';
+import { createUiId } from './uiId.js';
 import { combatFields, emptyDetails, identityFields, narrativeFields, rowSections } from './characterDetails.js';
 
 function ReferenceRows({ section, rows, onChange }) {
-  const ids = useRef(rows.map(() => crypto.randomUUID()));
+  const ids = useRef(rows.map(() => createUiId()));
   const [removed, setRemoved] = useState(null);
   const container = useRef(null);
   const update = (index, key, value) => onChange(rows.map((row, position) => position === index ? { ...row, [key]: value } : row));
@@ -34,7 +35,7 @@ function ReferenceRows({ section, rows, onChange }) {
         requestAnimationFrame(() => container.current?.querySelectorAll('.reference-row > summary')[index]?.focus());
       }}>Undo</Button></div>}
       <Button className="secondary small" disabled={rows.length >= section.limit} onClick={() => {
-        ids.current.push(crypto.randomUUID());
+        ids.current.push(createUiId());
         onChange([...rows, { ...Object.fromEntries(section.fields.map(([key]) => [key, ''])), ...(section.proficiency ? { proficiency: 'none' } : {}) }]);
         requestAnimationFrame(() => container.current?.querySelector('.reference-row:last-of-type input')?.focus());
       }}>Add entry</Button>
@@ -52,7 +53,7 @@ export function CharacterDetailsEditor({ details, onChange }) {
   </details>;
   return <section className="character-details-editor" aria-label="Character details">
     <h3>Character details & references</h3>
-    <p className="form-note">Listed values are editable references, not automatically calculated rules. Spell preparation markers are kept as printed; “O” alone does not tell us whether a spell is prepared. These details are visible to the party when you join a campaign.</p>
+    <p className="form-note">Listed values are editable references, not automatically calculated rules. Spell preparation markers are kept as printed; “O” alone does not tell us whether a spell is prepared. Saved campaign details are shared with everyone using this app.</p>
     {group('identity', 'Identity & description', identityFields)}
     {group('combat', 'Combat & movement reference', combatFields)}
     {rowSections.filter(({ key }) => key !== 'additionalFields').map((section) => <ReferenceRows key={section.key} section={section} rows={data[section.key]} onChange={(rows) => onChange({ ...data, [section.key]: rows })} />)}

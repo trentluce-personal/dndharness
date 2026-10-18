@@ -93,13 +93,13 @@ label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 9px; }
 .edition-summary p { color: var(--muted); font-size: 11px; line-height: 1.65; margin: 7px 0 0; max-width: 350px; }
 .table-note { display: flex; align-items: center; justify-content: center; gap: 9px; text-align: center; color: var(--muted); font: italic 13px/1.6 Georgia, serif; margin: 24px 0 42px; animation: settle-in 600ms 180ms var(--ease-out) both; }
 .table-note > span { color: var(--wine); font-style: normal; font-size: 17px; }
-footer { display: flex; justify-content: space-between; gap: 16px; border-top: 1px solid var(--border); padding: 22px 0; font-size: 10px; color: var(--muted); }
-footer > span:first-child { font: 12px Georgia, serif; }
+.app-shell > footer { display: flex; justify-content: space-between; gap: 16px; border-top: 1px solid var(--border); padding: 22px 0; font-size: 10px; color: var(--muted); }
+.app-shell > footer > span:first-child { font: 12px Georgia, serif; }
 
 /* Animate paint and transforms, never layout or an indiscriminate `all`. */
 :root, .site-header, .brand-name > span, .wordmark, .local-label, .local-label > span,
 .eyebrow, h1 em, .intro, .table-card, .table-art, .chapter-number,
-.table-content > p, .edition-tag, .edition-summary p, .table-note, footer {
+  .table-content > p, .edition-tag, .edition-summary p, .table-note, .app-shell > footer {
   transition: color 320ms ease, background-color 320ms ease, border-color 320ms ease, box-shadow 320ms ease;
 }
 .theme-toggle { transition: color 320ms ease, background-color 320ms ease, border-color 200ms ease, box-shadow 250ms ease, transform 200ms var(--ease-out); }
@@ -204,7 +204,7 @@ footer > span:first-child { font: 12px Georgia, serif; }
   .card-eyebrow { margin-bottom: 16px; }
   h2 { font-size: 31px; }
   .table-note { font-size: 12px; margin: 22px 0 32px; }
-  footer { font-size: 9px; padding: 20px 0; }
+  .app-shell > footer { font-size: 9px; padding: 20px 0; }
 }
 @media (max-width: 380px) {
   .local-label { display: none; }

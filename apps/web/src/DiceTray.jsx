@@ -1,5 +1,6 @@
 import { Component, lazy, Suspense, useEffect, useRef, useState } from 'react';
 import Button from './Button.jsx';
+import { createUiId } from './uiId.js';
 import { dice3dThemes } from '@dndharness/dice-3d/theme';
 import { reportedValues } from '@dndharness/dice-3d/results';
 
@@ -58,7 +59,7 @@ export default function DiceTray({ welcoming = false }) {
   function roll() {
     if (pending.current) return;
     const values = Array.from({ length: count }, () => randomDie(sides));
-    const next = { id: crypto.randomUUID(), sides, values, modifier, total: values.reduce((a, b) => a + b, modifier) };
+    const next = { id: createUiId(), sides, values, modifier, total: values.reduce((a, b) => a + b, modifier) };
     pending.current = next;
     if (!use3d) finish();
     else { setRolling(true); setSceneRoll(next); timer.current = setTimeout(failScene, 15000); }

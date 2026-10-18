@@ -2,15 +2,46 @@
 
 Locally run application that friends and family can use to play through a D&D campaign.
 
-See [product intent](./docs/product.md) for the intended group-hosted LAN
-experience, compatibility principles, and account/character/campaign/save model.
+See [product intent](./docs/product.md) for the group-hosted LAN
+experience and compatibility principles.
 The [design guide](./docs/design.md) records the approved visual and interaction ethos.
 
 ## Frontend
 
-A local React + Vite app, Express API, and PostgreSQL database. Create accounts,
-keep edition-linked character sheets, run campaigns with a party, save/restore
-chapters, and roll dice. Gameplay automation will grow as real play requires it.
+A local React + Vite app, Express API, and PostgreSQL database. The current UI is
+**sessions only**: Home offers **Host a session** and a feed of open sessions.
+The original illustrated map/d20 hero is restored, with its split serif heading,
+burgundy italic accent, map caption, and decorative divider. The feed reuses the
+original framed folio/book covers and gold line art, with real session titles,
+host names, counts, and Join/Open actions on parchment/theme-aware metadata surfaces.
+The familiar 1160px shell, branded header, warm ornamented roster panel,
+theme/motion controls, and site footer retain the original fantasy identity.
+Campaigns, character, and Dice capabilities are unavailable; there is no separate
+Live sessions navigation tab.
+
+1. Open `/`. Choose **Host a session**, enter **Session name** (1–150 characters)
+   and **Your name** (1–100), then host. No campaign, edition, or account is needed.
+2. Friends open the same app address. The feed shows sessions live on this running
+   app, with title, host, participant count, and **Join** / **Open**.
+3. The session page shows the roster. Enter your name to join; players can leave,
+   and the host can end the session after confirmation. **Back to Home** returns
+   to the feed. `/sessions` is a feed alias; `/sessions/host` opens the host dialog.
+
+Sessions are ephemeral, held in API memory. Presence renews every 30 seconds and
+expires after 5 minutes without renewal; host expiry or an API restart closes the
+session. Keep the app open and use the same address/browser profile. Automatic
+cookie and IndexedDB setup preserves first-use identity across tabs, including
+ordinary LAN HTTP. Tabs sharing that cookie share membership and host authority.
+Discovery retries every 30 seconds and on visibility/reconnect; failures keep known
+memberships and offer **Retry session check**. Failed host/join requests keep entries;
+cancel/navigation protects meaningful entries and pending lifecycle requests.
+
+LAN access remains an explicit opt-in, documented below. Discovery does not scan
+other installations. There are no battle, scenario, journal, sheet, or dice tools
+in this UI. Existing campaign/character/history storage and legacy APIs are retained;
+old GUI routes show an unavailable page with **Back to Home**. Session actions
+do not create dummy campaigns or mutate saved campaign data. Historical feature
+notes below are explicitly archival, not current usage.
 
 ## Repository layout
 
@@ -18,7 +49,7 @@ This is a native npm-workspace monorepo, with one root lockfile:
 
 ```text
 apps/web/         React + Vite app, including its own package.json and build config
-apps/api/         Express API, authentication, and workflow checks
+apps/api/         Express API and workflow checks
 apps/db/          SQL migrations for the PostgreSQL schema
 packages/         Shared packages, added only when multiple apps need them
 scripts/          Local development-tool installers
@@ -81,113 +112,199 @@ after a Windows restart, unless you explicitly stopped it. Enable Docker Desktop
 startup at sign-in if you want it available automatically. Source files remain
 in the repository; theme and motion preferences remain in your browser.
 
-This is a development server, exposed only on the host's loopback address.
+This is a development server, exposed only on the host's loopback address by default.
 Use either this container or `npm run dev` on port 5173, not both simultaneously.
 The production static-server image can be added when deployment is needed.
 Browser-review tooling still runs on the host using the same local URL.
 
 The API and database are internal Docker services, not published to the host.
-Vite proxies `/api` to Express, so sessions use same-origin cookies. PostgreSQL
-stores accounts, sessions, editions, characters, campaigns, and saves in the
+Vite proxies `/api` to Express. PostgreSQL
+stores editions, campaigns, campaign characters, checkpoints, and history in the
 `dndharness_database` volume. `docker compose down` preserves it. **Do not use
 `docker compose down -v` unless you intend to erase all local application data.**
 Changing `.env` does not change the password of an already-initialized database.
 
-### Accounts, characters, and campaigns
+### Opt in to LAN access (Docker Compose)
 
-The interface is designed for first-time users: **Home** offers direct actions
-to join friends or run a game. **Characters**, **Campaigns**, and **Dice roller**
-have dedicated gameplay navigation. **Profile** and **Log out** are in
-the top-right account controls. The dice roller is also available without an account.
-Choose a rules edition when creating a character or campaign; ask your DM which
-version to use. If you need a character while joining, you can create it directly
-through PDF import from the join dialog and return with your invite code preserved.
+The default `WEB_BIND_ADDRESS=127.0.0.1` keeps port 5173 local. To let your group
+connect from other devices, deliberately edit your ignored `.env`:
 
-1. Choose **Create an account**. Email is a local login identifier; no verification
-   or password-recovery email is sent. Passwords require 10–128 characters.
-2. **Profile** edits display name, optional private real name and bio, and password.
-   Email is currently read-only. Password changes invalidate other sessions.
-3. **Characters → Import character sheet** is the entry point for new characters.
-   Upload a supported D&D Beyond PDF, review it, and add the character. Existing
-    characters remain editable. **Delete character** on Home or Characters cards,
-    or in the sheet editor, always asks **Are you sure you want to delete?** and names
-    the character. Cancel keeps the character; explicit confirmation removes
-    it from your library and future campaign join choices. Existing campaign copies,
-    membership, and checkpoints remain intact; the internal character record is
-    retained for those links. There is no undo. Card deletion keeps you on Home or
-    Characters; deleting from the sheet returns to Characters. Failed deletion
-    keeps the confirmation open so you can retry.
-    The edition-linked core sheet includes ancestry, class, level,
-   abilities, HP, AC, speed, background, equipment, and notes. This provisional
-   sheet is manual data entry, not an automated 5e rules engine, and will change
-   later. A character's edition is fixed after creation.
-4. **Campaigns** is a library of saved adventure sources. **Open campaign** opens its
-   overview, with a player-safe synopsis, rules edition, and DM identity; it does not start a live game. Archived campaigns
-   remain accessible but cannot accept new characters while archived.
-   **Campaigns → New campaign** prepares a saved campaign and makes you the DM. Add your own matching characters
-   or share the invite code. A player uses **Join with code** and selects their own
-   character of the same edition. Accounts can participate in several campaigns.
-   The DM edits the source title and synopsis, private storyline, and private DM
-   guidance. **Create planning canvas** saves an empty board; **Open planning canvas**
-   returns to it. Add freely placed story, location, encounter, or NPC points with
-   notes, location references, and manual NPC/enemy references. Move markers by
-   dragging, arrow keys (Shift for five-percent steps), or X/Y percentage fields.
-   **Add point at center** works without a pointer. Deleting a point asks for confirmation.
-   Source and canvas edits require explicit Save; errors retain the draft.
-   **Reload saved source** asks before discarding edits. Concurrent edits reject stale
-   revisions and require reloading before saving. Leaving unsaved source edits asks
-   whether to keep editing or discard; saving locks editing/navigation.
-   The canvas is DM-only, limited to 100 points and 200,000 bytes for the whole source.
-   It has no connections, maps/uploads, combat automation, live sessions, or playthrough branches.
-5. **Existing play progress** keeps the existing journal, party, and checkpoints at
-   `/campaigns/:id/progress`, separate from the editable source. The campaign keeps
-   its own copy of each joined character sheet. The DM edits
-   campaign sheets, manages the party, and updates the journal. Party members
-   can read the journal, sheets, and saves. Existing journal notes are visible to the party,
-   so they are not a private DM notebook. Emails, real names, and bios are private.
-6. **Save checkpoint** writes an immutable snapshot of the journal, campaign title/status,
-   DM public identity, party account links/public identities, and campaign sheets.
-   It also saves the currently edited journal. **View checkpoint** views history;
-   **Restore** replaces current campaign state/party after confirmation. Personal
-   character sheets and save history are preserved. Only the DM can save/restore.
-    Restoring a party can reinstate a previously removed member's access.
-    Restoring a checkpoint does not replace the adventure source or its planning canvas.
-7. Archive a campaign to mark it inactive; reactivate it to accept new party members.
+```dotenv
+# Example only: replace 192.168.1.50 with the host computer's actual LAN IPv4 address.
+WEB_BIND_ADDRESS=0.0.0.0
+APP_ORIGINS=http://127.0.0.1:5173,http://localhost:5173,http://192.168.1.50:5173
+```
 
-Personal **Open character sheet** links open `/characters/:id` as a full page,
-with **Home → Characters → saved name** breadcrumbs. Section destinations use
-`/characters`, `/campaigns`, `/dice`, and `/profile`; campaigns open at
-`/campaigns/:id`; private planning uses `/campaigns/:id/planning`, and existing
-play progress uses `/campaigns/:id/progress`. Links support reload, direct access, browser Back/Forward, and
-opening another tab. Signed-out links remain in place through login. Sheets are
-resolved from the signed-in account's library; removed or inaccessible sheets
-show an unavailable state. Personal sheets open read-first with framed abilities,
-listed modifiers, persistent saving throws/skills, and Actions, Spells, Inventory,
-Features, Background, and Notes tabs. Notes retains all modifier labels and other
-PDF fields. **Edit character** opens the editor on the same URL; **Cancel editing**
-asks to discard dirty edits, with **Keep editing** preserving the draft. Successful
-saves return to the saved sheet. Personal edits save in place; failed saves retain the
-draft. Leaving meaningful unsaved personal edits asks whether to keep editing or
-discard, including browser history; reload/closing uses the browser's warning.
-Campaign sheets and imported-sheet review remain dialogs.
+You can bind `WEB_BIND_ADDRESS` to that specific LAN IP instead of `0.0.0.0`
+(all IPv4 interfaces). Keep the loopback origins and include every exact app
+origin the group will use: scheme, hostname/IP, and port, comma-separated, with
+no paths or wildcards. A hostname is usable only if the group's devices can
+resolve it; changing the computer's LAN address requires updating this setting.
 
-Sessions last seven days and survive server restarts. Passwords use salted scrypt;
-only hashed random session tokens are stored. Cookies are HTTP-only and SameSite.
-Mutating requests accept JSON and validate supplied browser origins. This setup
-is for local development; HTTPS/secure cookies (`COOKIE_SECURE=true`) and reverse
-proxy configuration are needed for a future hosted deployment.
+Apply the opt-in with `docker compose up -d --wait web api`. Both services need
+the updated `APP_ORIGINS`. Share **http://192.168.1.50:5173** with your actual IP;
+`localhost` and `127.0.0.1` on a friend's device refer to their own device.
+Connect devices to the same trusted local network. Allow inbound TCP 5173 only
+on the host's private-network firewall profile, scoped to the local network.
+Guest Wi-Fi/client isolation may prevent connections. Do not configure router
+port forwarding or expose this accountless development server to the internet.
+Anyone who can reach it can edit campaigns and read shared preparation.
 
-### Import a character sheet
+Vite derives an explicit hostname allowlist from `APP_ORIGINS` and checks the
+request Host (including port) before proxying `/api`; unconfigured addresses
+are rejected even for reads. The API separately checks supplied browser origins;
+live-session actions require an allowed Origin. `/api/hosting` returns
+`{ lanConfigured, joinUrls }` from configured non-loopback origins, never from
+request host headers. **Configured does not mean reachable**: it cannot verify
+the bind address, firewall, address resolution, or another device's connection.
+Automated configuration/browser checks are not physical-device LAN verification;
+confirm access from each intended device after opting in.
 
-In **Characters**, choose **Import character sheet** and select a form-fillable
+To return to local-only use, set `WEB_BIND_ADDRESS=127.0.0.1`, remove LAN origins
+from `APP_ORIGINS`, and run `docker compose up -d --wait web api` again.
+
+### Archived usage: shared campaigns (not in the current GUI)
+
+**Historical reference only.** The session-only UX above supersedes this section,
+the former campaign-based hosting instructions, and the import instructions below.
+Their storage and APIs are retained; their pages are unavailable.
+
+The app opens directly into **Home**, with **Host a session** and **Join a session**
+actions. **Campaigns** opens the shared saved-adventure library; **Dice roller**
+has its own destination. Accounts, login,
+profiles, personal character libraries, and invite-code joining are no longer
+part of this experience. Anyone reaching this app can edit and save any campaign.
+Legacy personal rows are preserved but unavailable in this first slice;
+`/characters`, old personal sheet links, and `/profile` explain the change and
+link to campaigns without exposing preserved personal data.
+
+1. Choose **New campaign**, enter a title, and choose the group's rules edition.
+   The edition is fixed. Opening the saved adventure does not start a live game.
+   The top campaign navigation links to **Overview**, **Planning canvas**,
+   **Party & journal**, and **Version history**, with the current page marked.
+2. In the overview, edit the source title, synopsis, storyline, and DM guidance.
+   Preparation contains spoilers but is **shared, not confidential**. Everyone
+   can open and edit it. Source edits require explicit Save; errors retain drafts.
+   The saved adventure title identifies the campaign in the library and breadcrumbs;
+   it updates after server confirmation. **Journal title** names the journal
+   independently and does not rename the adventure.
+3. **Create planning canvas** saves a blank board. Add freely placed story,
+   location, encounter, or NPC points with notes and manual references. Move
+   markers by dragging, arrow keys (Shift for five-percent steps), or X/Y fields.
+   **Add point at center** works without a pointer. Point deletion is confirmed.
+   The canvas is limited to 100 points and the complete source to 200,000 bytes.
+4. **Party & journal** (`/campaigns/:id/progress`) preserves the existing journal,
+   party, and checkpoints. **Import character sheet** reads a supported PDF,
+   reviews an unsaved draft, and adds a campaign-owned sheet directly to the party.
+   The campaign supplies the edition; no blank manual creation is offered.
+   Sheets open read-first with listed abilities, skills, saving throws, and reference
+   tabs. **Edit character** edits the campaign sheet; dismissal of meaningful
+   changes asks to keep editing or discard. **Remove** names the character and
+   confirms removal, recoverable through complete version history.
+5. Save the shared journal explicitly. **Save checkpoint** saves the current
+   journal edits and a named immutable checkpoint in one atomic request. Checkpoints
+   include journal title, campaign status, journal, and party, **not** source or canvas. Preview and
+   confirmed restore are available; legacy checkpoints remain readable with
+   account identities omitted. Restoring does not erase checkpoints or history.
+   Journal, checkpoint, party, and status actions show feedback near their controls.
+   If checkpoints cannot load, the journal and party remain usable and previously
+   loaded checkpoints remain visible. Choose **Retry loading checkpoints** to
+   retry that list; a load failure is not reported as an empty checkpoint history.
+6. **Version history** (`/campaigns/:id/history`) lists automatic complete versions.
+   **Preview version** shows source text, canvas points/references, journal, and
+   expandable complete party sheets. **Revert to this version** explicitly confirms
+   replacing source, canvas, title/status, journal, and party. Revert appends a
+   new version and retains all previous history and checkpoints.
+7. In **Party & journal**, use the separate **Campaign status** section to
+   **Archive campaign** or **Reactivate campaign**. Save the journal and save or
+   clear the checkpoint name first, or confirm **Discard drafts and reload**.
+   Status changes send only the new status and expected revision, without saving
+   journal fields. Archived source, sheets, and journals remain editable;
+   reactivate before importing characters or hosting a new session.
+
+All existing-campaign writes send an expected campaign revision. Source saves
+also retain their source revision check. Editors capture revisions at draft load;
+they never silently rebase stale drafts. Conflicts keep drafts and require an
+explicit confirmed reload. Save or discard journal/checkpoint drafts before party
+mutations or checkpoint restores. Navigation to history, links, and browser Back
+respect unsaved edits; reload/closing uses the browser warning. Draft protection
+is in-page, not a promise of recovery after closing the browser. Deep links,
+reload, Back/Forward, and native new-tab links remain supported.
+
+Mutating API requests accept JSON. The shared workspace remains open to everyone
+reaching this local group setup, whether or not they join a live session.
+
+### Archived usage: campaign-based live sessions (superseded)
+
+1. On **Home**, choose **Host a session**, select a saved active campaign, enter
+   a display name, and choose **Host session**. Campaign cards also offer hosting
+   or a link to their existing session. Opening a campaign alone never hosts it.
+2. Friends open the same app address, choose **Join a session**, then **View
+   session**, enter a display name, and choose **Join session**. Discovery lists only
+   sessions on this running app; it does not scan the network or discover other
+   installations. A session page has a roster and the current saved journal and
+   party sheets. Preparation is omitted there, but remains accessible to everyone
+   through the campaign workspace.
+3. There is **one active session per campaign**; distinct campaigns can have
+   sessions at the same time. Joining is presence at the table, not assignment
+   or exclusive control of a character. There are no readiness, start-play,
+   pause/resume, combat, or shared-dice controls in this stage.
+4. Membership and the host's ability to end a session use a browser capability
+   cookie, not an account or display-name identity. Keep using the same host URL
+   and browser profile; switching between localhost, an IP, and a hostname can
+   use different cookies. Host/join setup uses IndexedDB and cookies to keep
+   identity consistent across tabs; enable both for this site. This works on
+   ordinary LAN HTTP without requiring Web Locks. Tabs sharing the cookie share
+   that browser identity.
+   Joined membership follows navigation around the workspace; opening Campaigns,
+   history, or Dice roller does not leave the table.
+   Background membership checks retry every **30 seconds**, even without new live
+   events, and recheck when the page becomes visible. Temporary failures retain
+   known memberships; successful session checks still update when another fails.
+   **Retry session check** requests another check from the workspace error message.
+5. The open workspace sends presence heartbeats every **30 seconds**. Membership
+   expires after **5 minutes** without renewal; host expiry ends the whole session.
+   Closing the browser or background-device suspension can stop renewal. Players
+   can **Leave session**; only the session host can explicitly **End session** after
+   confirmation. This authority does not restrict campaign editing or history:
+   those remain open to everyone.
+
+Expand **How session presence works** on the directory or session page for lifecycle
+details. **Connect your group on the local network** keeps setup guidance in a
+separate disclosure on hosting and session pages.
+
+Sessions are ephemeral, in API memory: **an API restart closes all sessions**.
+Hosting, joining, leaving, and ending do not save, archive, delete, or otherwise
+mutate the campaign, its revisions, checkpoints, or complete versions. Existing
+save/version/history behavior is unchanged, and saved campaign data survives.
+
+If browser setup stays pending after a failed connection or closed tab, wait and
+try again first. If it remains blocked, close **all tabs for this app**, clear
+this site's data in browser settings, enable site storage and cookies, then reopen.
+Clearing site data resets browser identity and any existing host authority; it
+does not recover control of an old table. End that table before resetting if you
+still can, or wait for its host lease to expire after five minutes without renewal
+before hosting that campaign again. Saved campaigns and history are unaffected.
+
+Realtime uses **server-sent events (SSE) for invalidation**, with normal HTTP
+requests for writes and authoritative reads. Clean views refresh after changes;
+reconnection triggers a full authoritative refresh rather than replaying missed
+events. Dirty source, canvas, journal, and character drafts stay intact with
+their captured revisions. Updates do not silently rebase drafts; stale saves
+fail and require explicit reload/discard before retrying. Dice results remain
+local to their page and are not broadcast.
+
+### Archived usage: import a character sheet (unavailable in the GUI)
+
+In a campaign’s **Party & journal**, choose **Import character sheet** and select a form-fillable
 D&D Beyond PDF (up to 10 MB). The app reads the PDF locally in your browser and
 opens an editable draft with a character summary and extracted counts; nothing
 is saved until you choose **Add character**, which stays visible during review.
 Equipment rows expand when selected for editing; removal offers Undo.
-Review the rules edition and fill in any missing core values. Current HP belongs
-to each campaign and is not imported into personal sheets; newly joined campaign
-copies start at maximum HP.
-PHB-2024 references suggest the 2024 edition but remain editable before creation.
+Review the fixed campaign edition and fill in any missing core values. Imported
+characters start at maximum HP; current HP can be reviewed in the campaign draft.
+PHB-2024 references suggest an edition; a mismatch is shown for review without
+changing the campaign edition or converting rules.
 Equipment is imported as editable item rows (name, quantity, listed weight), with
 separate copper/silver/electrum/gold/platinum coin fields. Unknown quantities and
 weights remain blank; listed PDF weights are preserved without assuming whether
@@ -201,29 +318,28 @@ unrecognized filled fields appear under **Other PDF fields** for review. An “O
 preparation marker is preserved as printed, not interpreted as prepared/unprepared.
 The original PDF
 is not uploaded or retained. Scanned/flattened PDFs and other document formats
-are not supported in this first version. Imports create new personal characters.
+are not supported in this first version. Imports create new campaign characters.
 
-Focused importer checks: `node --test apps/web/test/characterImport.test.js`.
+Focused frontend checks: `npm run test:web` (existing Node logic tests for importer, source
+payloads, revision-preserving drafts, canonical merges, sheets, and deep links).
 
 Character sheet format 3 adds structured `details` alongside format-2 `inventory`
 and legacy equipment/notes text. Existing format-1/2 sheets and saved snapshots remain readable; restoring
-history keeps its original HP and equipment. New/edited personal sheets omit
-current HP, while campaign sheets retain it. Editing an old sheet upgrades its
+history keeps its original HP and equipment. Campaign sheets retain current HP.
+Editing an old sheet upgrades its
 format without parsing or replacing its old notes. Re-import a PDF to populate
-the new fields; imports create a new character. Character details are copied to
-campaigns and included in checkpoints, with the same party visibility as the
+the new fields; imports create a new campaign character. Details are included in
+checkpoints and complete versions, with the same shared visibility as the
 rest of the sheet. Each sheet is limited to 200 KB of JSON data.
 
-### Optional fictional demo
+### Legacy storage: optional fictional demo (not shown in the GUI)
 
 ```bash
 docker compose exec api npm run seed:demo --workspace=@dndharness/api
 ```
 
-This explicitly inserts two labeled fictional accounts, a character, a campaign,
-and a save. It prints `dm@demo.test`, `player@demo.test`, and a newly generated
-password. Keep the password locally. It refuses to overwrite existing demo
-accounts. Demo content is **not** inserted during normal startup.
+This explicitly inserts labeled fictional shared campaign, character, and
+checkpoint content. Demo content is **not** inserted during normal startup.
 
 ### API and migrations
 
@@ -234,30 +350,47 @@ a database trigger; snapshots carry a format version.
 
 Migration `003_campaign_adventures.sql` adds independent version-1 adventure sources
 with integer revisions. Existing sources inherit only the old campaign title;
-their synopsis and private fields start blank and their canvas starts null. Old
+their synopsis and preparation fields start blank and their canvas starts null. Old
 shared summaries are not copied into the synopsis. Library/detail responses expose
-only source title/synopsis; full source GET/PUT is DM-only. PUT sends the entire
-source with its current `revision`; success increments it atomically and returns
-canonical data. A stale revision returns 409. Source fields are independent of
-legacy checkpoint creation/restoration.
+source title/synopsis. Full source GET/PUT is now shared and returns `campaignRevision`.
+PUT sends the entire source with its `revision` and `expectedRevision`; success
+returns canonical data. A stale revision returns 409. Source fields remain
+independent of legacy checkpoint creation/restoration but are in complete history.
 
 Main endpoints (all under `/api`):
 
 | Area | Endpoints |
 | --- | --- |
-| Public | `GET /health`, `GET /editions` |
-| Accounts | `POST /auth/register`, `/auth/login`, `/auth/logout`; `GET /auth/me` |
-| Profile | `PATCH /profile`; `POST /profile/password` |
-| Characters | `GET/POST /characters`; `PATCH/DELETE /characters/:id` |
-| Campaigns | `GET/POST /campaigns`; `GET/PATCH /campaigns/:id`; `POST /campaigns/join` |
-| Adventure source (DM only) | `GET/PUT /campaigns/:id/adventure` |
-| Party | `POST /campaigns/:id/party`; `PATCH/DELETE /campaigns/:id/party/:characterId` |
+| Public | `GET /health`, `GET /editions`, `GET /hosting` |
+| Realtime | `GET /events` (SSE invalidations and reconnect refresh signal) |
+| Browser capability | `POST /live-browser` with `{}` to initialize; `{probe:true}` to check without issuing a cookie |
+| Live sessions | `GET/POST /live-sessions`; `GET /live-sessions/:id`; `POST /live-sessions/:id/join`, `/heartbeat`, `/leave`, `/end` |
+| Campaigns | `GET/POST /campaigns`; `GET/PATCH /campaigns/:id` |
+| Adventure source | `GET/PUT /campaigns/:id/adventure` |
+| Campaign characters | `POST /campaigns/:id/characters`; `PATCH/DELETE /campaigns/:id/characters/:characterId` |
+| Complete history | `GET /campaigns/:id/history`, `GET /campaigns/:id/history/:historyId`; `POST /campaigns/:id/history/:historyId/restore` |
 | Saves | `GET/POST /campaigns/:id/saves`; `POST /campaigns/:id/saves/:saveId/restore` |
 
-The API validates inputs, enforces owner/DM access, and uses parameterized SQL.
-The current login throttle is in-memory for this single local API process.
-No account deletion, email changes/recovery, live multiplayer sync, or automated
-edition-specific mechanics are implemented yet.
+The current frontend uses only live discovery, presence, and SSE, without any
+`/campaigns` or `/editions` reads (including reconnect). Hosting sends
+`POST /live-sessions {title, displayName}`; standalone session detail has
+`campaignId: null` and `editionId: null`, plus title, host, roster, revision,
+participant count, start time, and browser `self` membership. Campaign and edition
+endpoints in this table are retained legacy APIs, not GUI workflows.
+
+The web app handles capability initialization before host/join. Direct API clients
+must first send JSON `{}` to `POST /api/live-browser` with an allowed `Origin`
+and retain its response cookie. Success is `200 {ready:true}`; a JSON
+`{probe:true}` request returns `{ready:boolean}` without issuing a cookie.
+Host/join without a valid capability cookie returns **428** and does not issue
+one. See [the API runtime contract](./apps/api/README.md) for cross-tab setup details.
+
+The API validates inputs, checks expected revisions, and uses parameterized SQL.
+The frontend does not bootstrap authentication or request personal libraries.
+Complete snapshots use version 2 with identity-free campaign and party data.
+Legacy checkpoint rows remain immutable; identity fields are sanitized on read.
+Live presence and saved-state refresh use the single running API process; automated
+edition-specific mechanics and persistent playthrough instances are not implemented.
 
 Run focused API workflow checks against a **dedicated test database**:
 
@@ -271,11 +404,19 @@ For a plain-SQL backup, store output outside Git (for example in ignored `artifa
 Create the destination directory first. This backup contains private application data.
 
 The test command creates/reuses `dndharness_test`, clears only its fixtures, and
-checks accounts, permissions, edition constraints, private fields, saves,
-restoration, password changes, logout, and origin validation. It never targets
-the main campaign database. No frontend unit runner or lint tool is configured.
+checks shared campaigns, revision conflicts, character workflows, checkpoints,
+complete history/restoration, legacy sanitization, live-session leases/authority,
+SSE refresh signaling, and origin validation. The wrapper explicitly runs four
+test files and does not forward filter arguments. Serialize all suite invocations:
+they share `dndharness_test`. Only the test child targets that database; the running
+API and normal Compose browser traffic still target campaign data. Fresh browser
+profiles isolate identity, not persistent writes. Browser mutation checks require
+an isolated API/database environment; without one, report them blocked. Do not
+seed campaigns, truncate campaign data, or use `docker compose down -v` for checks.
+Existing frontend Node logic tests run with `npm run test:web`; no component test
+runner or lint tool is configured.
 
-### Dice tray and 3D visuals
+### Archived implementation: dice tray and 3D visuals (unavailable in the GUI)
 
 Roll d4/d6/d8/d10/d12/d20/d100, up to ten dice, with a modifier. Results use
 browser cryptographic randomness with rejection sampling; animation does not
@@ -316,6 +457,8 @@ npm run dev
 
 Open the local URL printed by Vite (normally <http://127.0.0.1:5173>).
 The development server binds to your local machine. Stop it with Ctrl+C.
+The LAN opt-in above applies to Compose; plain `npm run dev` reads `APP_ORIGINS`
+from its process environment, not the root Compose `.env` file.
 `npm run dev` starts the frontend only; it expects an API at
 `http://127.0.0.1:3001` (override `API_PROXY_TARGET` if needed). To run the API
 outside Docker, provide `DATABASE_URL`, then use
@@ -326,13 +469,11 @@ The first visit uses your system color preference; your choice is then saved
 in this browser's local storage. If storage is unavailable, the toggle still
 works for the current page session.
 
-Theme changes, button feedback, and edition summaries use subtle transitions.
+Theme changes and button feedback use subtle transitions.
 Supported browsers reveal theme changes outward from the toggle; others use
-color transitions. Edition changes get a brief shimmer, and the d20 seal responds
-to hover and focus.
-The styled edition menu supports click/touch, arrow keys, Home/End, Enter/Space,
-Escape, and Tab. Pointer clicks use a subtle border; keyboard focus uses a slim ring.
-Buttons and edition options use soft pointer-positioned ripples. Keyboard
+color transitions. The d20 seal responds to hover and focus.
+Pointer clicks use a subtle border; keyboard focus uses a slim ring.
+Buttons use soft pointer-positioned ripples. Keyboard
 activation ripples start at the center, and reduced motion disables them.
 Entrance animations and motion effects respect your system's reduced-motion setting.
 Use **Enable animations / Motion on** in the header to override motion for this
@@ -346,7 +487,11 @@ npm run preview
 ```
 
 The production build is written to `apps/web/dist/`. Preview serves that build locally.
-API workflow checks use Node's built-in test runner; frontend review uses Playwright.
+Web logic checks use `npm run test:web` (or `npm run test --workspace=@dndharness/web`),
+which runs `node --test test/*.test.js` in the web workspace. For one file, use
+`node --test apps/web/test/characterImport.test.js` from the root. API workflow
+checks also use Node's built-in runner; browser review uses Playwright. There is
+no generic root `test` command that includes database-mutating API tests.
 
 Root scripts forward to npm workspaces. For a targeted build, use
 `npm run build --workspace=@dndharness/web`. The root build runs each workspace's
@@ -393,12 +538,18 @@ out of Git. Close only the review session when finished.
 Start as simple as possible and expand when a real feature needs it. Shared UI
 and edition-specific data should remain separate, small, composable pieces.
 
-- `apps/web/src/App.jsx`: the initial campaign-table screen.
+- `apps/web/src/App.jsx`: original shell, brand, theme/motion header, footer, and session-only bootstrap.
 - `apps/web/src/styles.css`: responsive styling using local system fonts.
-- `apps/web/src/AccountWorkspace.jsx`: account dashboard and creation flows.
+- `apps/web/src/SharedWorkspace.jsx`: feed/dialog/roster routing and draft guard.
+- `apps/web/src/LandingHero.jsx`: restored original decorative map/d20 hero and single Host a session action.
+- `apps/web/src/FolioCover.jsx`: presentation adapted from the original CampaignLibrary cover markup and SVG, without campaign behavior.
+- `apps/web/src/LiveSessions.jsx`: Home folio feed, compact host form, and roster controls.
+- `apps/web/src/workspace.css`: original hero/folio styling, warm session panels, roster, and forms.
+- The following campaign components are dormant historical implementations:
 - `apps/web/src/CampaignDetail.jsx`: journal, party, and saved chapters.
-- `apps/web/src/CampaignOverview.jsx`: safe source overview and private DM source editor.
-- `apps/web/src/CampaignPlanningCanvas.jsx`: private blank-board planning and point editor.
+- `apps/web/src/CampaignOverview.jsx`: source overview and shared preparation editor.
+- `apps/web/src/CampaignPlanningCanvas.jsx`: shared blank-board planning and point editor.
+- `apps/web/src/CampaignHistory.jsx`: complete version preview and guarded revert.
 - `apps/db/migrations/001_initial.sql`: schema and initial edition metadata.
 
 To add edition metadata, insert a row through a new SQL migration:
@@ -408,10 +559,10 @@ INSERT INTO editions (id, name, short_name, description, sort_order)
 VALUES ('my-ruleset', 'My ruleset', 'Custom', 'The rules our table uses.', 3);
 ```
 
-The API catalog drives the UI. `is_default` selects the default and adds
+In the dormant campaign UI, the API catalog drove edition selection. `is_default` selects the default and adds
 `(Default)` to its option title. A partial unique index permits only one default;
 clear the previous default before setting a new one. Currently 2024 is the default.
-The landing selection resets on reload; saved characters/campaigns retain their edition.
+The current session UI has no edition selector; saved characters/campaigns retain their edition.
 Adding metadata does not implement gameplay rules: editions with different
 mechanics may eventually need their own rule modules.
 

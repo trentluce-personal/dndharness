@@ -1,18 +1,24 @@
 import express from 'express';
-import { randomUUID, randomBytes } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { pool, transaction } from './db.js';
-import { authenticate, requireUser, hashPassword, verifyPassword, newSession, sessionToken, hashToken, clearSession, userColumns } from './auth.js';
-import { fail, text, uuid, email, password, sheet, campaignState } from './validation.js';
+import { fail, text, uuid, sheet, campaignState } from './validation.js';
 import { adventure, adventureColumns } from './adventure.js';
+import { readCampaign, campaignView, readAdventure, recordHistory, mutateCampaign, updateJournal, checkpointSnapshot, replaceParty, restoreJournal, consistentRead } from './campaigns.js';
+import { allowedOrigins, hostingInfo } from './origins.js';
+import { events } from './events.js';
+import { liveRoutes, initializeLiveBrowser } from './live-routes.js';
 
 export const app = express();
 app.disable('x-powered-by');
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  const path = req.path.toLowerCase();
+  if (path === '/api' || path.startsWith('/api/')) {
+    if (req.headers.origin !== undefined && !allowedOrigins.includes(req.headers.origin)) return res.status(403).json({ error: 'This origin is not allowed.' });
+    if (req.method === 'POST' && (path.replace(/\/$/, '') === '/api/live-browser' || path === '/api/live-sessions' || path.startsWith('/api/live-sessions/')) && !allowedOrigins.includes(req.headers.origin)) return res.status(403).json({ error: 'An allowed Origin is required for live session actions.' });
+  }
   if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-    const allowed = (process.env.APP_ORIGINS ?? 'http://127.0.0.1:5173,http://localhost:5173').split(',');
-    if (req.headers.origin && !allowed.includes(req.headers.origin)) return res.status(403).json({ error: 'This origin is not allowed.' });
     if (!req.is('application/json')) return res.status(415).json({ error: 'Use application/json.' });
   }
   next();
@@ -23,245 +29,134 @@ app.use((req, res, next) => {
   next();
 });
 app.get('/api/health', async (req, res) => { await pool.query('SELECT 1'); res.json({ status: 'ok' }); });
+app.get('/api/hosting', (req, res) => res.json(hostingInfo()));
+app.get('/api/events', events.connect);
+app.post('/api/live-browser', initializeLiveBrowser);
+app.use('/api/live-sessions', liveRoutes);
 app.get('/api/editions', async (req, res) => {
   const result = await pool.query('SELECT id,name,short_name AS "shortName",description,is_default AS "isDefault" FROM editions ORDER BY sort_order,id');
   res.json(result.rows);
 });
-app.use(authenticate);
-
-// Bounded in-memory login throttle for this local single API process.
-const attempts = new Map();
-app.use('/api/auth', (req, res, next) => {
-  if (!['/login', '/register'].includes(req.path)) return next();
-  const now = Date.now();
-  for (const [key, entry] of attempts) if (entry.until < now) attempts.delete(key);
-  const key = req.ip;
-  const entry = attempts.get(key) ?? { count: 0, until: now + 15 * 60000 };
-  entry.count++;
-  attempts.set(key, entry);
-  if (entry.count > 40) return res.status(429).json({ error: 'Too many sign-in attempts. Try again in 15 minutes.' });
-  next();
-});
-app.get('/api/auth/me', (req, res) => res.json({ user: req.user }));
-app.post('/api/auth/register', async (req, res) => {
-  const address = email(req.body.email);
-  const secret = password(req.body.password);
-  const name = text(req.body.displayName, 'Display name', 80, true);
-  const result = await pool.query(`INSERT INTO users(id,email,password_hash,display_name) VALUES ($1,$2,$3,$4) RETURNING ${userColumns}`, [randomUUID(), address, await hashPassword(secret), name]);
-  await newSession(res, result.rows[0].id);
-  res.status(201).json({ user: result.rows[0] });
-});
-app.post('/api/auth/login', async (req, res) => {
-  const address = email(req.body.email);
-  const secret = password(req.body.password);
-  const result = await pool.query('SELECT * FROM users WHERE email=$1', [address]);
-  // Do comparable password work for unknown accounts.
-  const stored = result.rows[0]?.password_hash ?? `scrypt:00000000000000000000000000000000:${'00'.repeat(64)}`;
-  if (!await verifyPassword(secret, stored) || !result.rowCount) fail('Email or password is incorrect.', 401);
-  await newSession(res, result.rows[0].id);
-  const user = await pool.query(`SELECT ${userColumns} FROM users WHERE id=$1`, [result.rows[0].id]);
-  res.json({ user: user.rows[0] });
-});
-app.post('/api/auth/logout', async (req, res) => {
-  const token = sessionToken(req);
-  if (token) await pool.query('DELETE FROM sessions WHERE token_hash=$1', [hashToken(token)]);
-  clearSession(res);
-  res.json({ ok: true });
-});
-app.use(requireUser);
-app.patch('/api/profile', async (req, res) => {
-  const values = [text(req.body.displayName, 'Display name', 80, true), text(req.body.realName ?? '', 'Real name', 120), text(req.body.bio ?? '', 'Bio', 1000), req.user.id];
-  const result = await pool.query(`UPDATE users SET display_name=$1,real_name=$2,bio=$3 WHERE id=$4 RETURNING ${userColumns}`, values);
-  res.json({ user: result.rows[0] });
-});
-app.post('/api/profile/password', async (req, res) => {
-  const current = password(req.body.currentPassword);
-  const next = password(req.body.newPassword);
-  const result = await pool.query('SELECT password_hash FROM users WHERE id=$1', [req.user.id]);
-  if (!await verifyPassword(current, result.rows[0].password_hash)) fail('Current password is incorrect.', 401);
-  await transaction(async (client) => {
-    await client.query('UPDATE users SET password_hash=$1 WHERE id=$2', [await hashPassword(next), req.user.id]);
-    await client.query('DELETE FROM sessions WHERE user_id=$1', [req.user.id]);
-  });
-  await newSession(res, req.user.id);
-  res.json({ ok: true });
-});
-
-const characterColumns = 'id,user_id AS "userId",edition_id AS "editionId",name,sheet,updated_at AS "updatedAt"';
-async function ensureEdition(id, client = pool) {
-  const result = await client.query('SELECT id FROM editions WHERE id=$1', [text(id, 'Edition', 100, true)]);
-  if (!result.rowCount) fail('Edition does not exist.');
-}
-app.get('/api/characters', async (req, res) => {
-  const result = await pool.query(`SELECT ${characterColumns} FROM characters WHERE user_id=$1 AND deleted_at IS NULL ORDER BY updated_at DESC`, [req.user.id]);
-  res.json(result.rows);
-});
-app.post('/api/characters', async (req, res) => {
-  await ensureEdition(req.body.editionId);
-  const result = await pool.query(`INSERT INTO characters(id,user_id,edition_id,name,sheet) VALUES ($1,$2,$3,$4,$5) RETURNING ${characterColumns}`, [randomUUID(), req.user.id, req.body.editionId, text(req.body.name, 'Character name', 100, true), sheet(req.body.sheet)]);
-  res.status(201).json(result.rows[0]);
-});
-app.patch('/api/characters/:id', async (req, res) => {
-  const result = await pool.query(`UPDATE characters SET name=$1,sheet=$2,updated_at=now() WHERE id=$3 AND user_id=$4 AND deleted_at IS NULL RETURNING ${characterColumns}`, [text(req.body.name, 'Character name', 100, true), sheet(req.body.sheet), uuid(req.params.id), req.user.id]);
-  if (!result.rowCount) fail('Character not found.', 404);
-  res.json(result.rows[0]);
-});
-
-app.delete('/api/characters/:id', async (req, res) => {
-  const result = await pool.query('UPDATE characters SET deleted_at=now(),updated_at=now() WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL', [uuid(req.params.id), req.user.id]);
-  if (!result.rowCount) fail('Character not found.', 404);
-  res.json({ ok: true });
-});
-
-async function accessCampaign(id, userId, client = pool, dmOnly = false, lock = false) {
-  const result = await client.query(`SELECT c.*,u.display_name AS dm_name FROM campaigns c JOIN users u ON u.id=c.dm_id WHERE c.id=$1 ${lock ? 'FOR UPDATE OF c' : ''}`, [uuid(id)]);
-  const campaign = result.rows[0];
-  if (!campaign) fail('Campaign not found.', 404);
-  if (campaign.dm_id !== userId) {
-    if (dmOnly) fail('Only the dungeon master can do that.', 403);
-    const member = await client.query('SELECT 1 FROM campaign_party WHERE campaign_id=$1 AND user_id=$2', [id, userId]);
-    if (!member.rowCount) fail('Campaign not found.', 404);
-  }
-  return campaign;
-}
-async function campaignView(campaign, client, viewerId) {
-  const party = await client.query('SELECT p.character_id AS "characterId",p.user_id AS "userId",p.name,p.sheet,u.display_name AS "displayName" FROM campaign_party p JOIN users u ON u.id=p.user_id WHERE p.campaign_id=$1 ORDER BY p.name,p.character_id', [campaign.id]);
-  const overview = await client.query('SELECT title,synopsis FROM campaign_adventures WHERE campaign_id=$1', [campaign.id]);
-  return {
-    id: campaign.id, title: campaign.title, editionId: campaign.edition_id,
-    status: campaign.status, state: campaign.state, updatedAt: campaign.updated_at,
-    dm: { id: campaign.dm_id, displayName: campaign.dm_name },
-    ...(viewerId === campaign.dm_id ? { inviteCode: campaign.invite_code } : {}),
-    party: party.rows,
-    adventure: overview.rows[0],
-  };
-}
 app.get('/api/campaigns', async (req, res) => {
-  const result = await pool.query('SELECT c.*,u.display_name AS dm_name FROM campaigns c JOIN users u ON u.id=c.dm_id WHERE c.dm_id=$1 OR EXISTS (SELECT 1 FROM campaign_party p WHERE p.campaign_id=c.id AND p.user_id=$1) ORDER BY c.updated_at DESC', [req.user.id]);
-  res.json(await Promise.all(result.rows.map((campaign) => campaignView(campaign, pool, req.user.id))));
+  res.json(await consistentRead(async (client) => {
+    const campaigns = await client.query('SELECT * FROM campaigns ORDER BY updated_at DESC,id');
+    const views = [];
+    for (const campaign of campaigns.rows) views.push(await campaignView(campaign, client));
+    return views;
+  }));
 });
 app.post('/api/campaigns', async (req, res) => {
-  await ensureEdition(req.body.editionId);
   const result = await transaction(async (client) => {
-    const created = await client.query('INSERT INTO campaigns(id,dm_id,edition_id,title,invite_code,state) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *', [randomUUID(), req.user.id, req.body.editionId, text(req.body.title, 'Campaign title', 150, true), randomBytes(8).toString('hex').toUpperCase(), campaignState(req.body.state)]);
-    await client.query('INSERT INTO campaign_adventures(campaign_id,title) VALUES ($1,$2)', [created.rows[0].id, created.rows[0].title]);
-    return campaignView({ ...created.rows[0], dm_name: req.user.displayName }, client, req.user.id);
+    const editionId = text(req.body.editionId, 'Edition', 100, true);
+    if (!(await client.query('SELECT 1 FROM editions WHERE id=$1', [editionId])).rowCount) fail('Edition does not exist.');
+    const title = text(req.body.title, 'Campaign title', 150, true);
+    const created = await client.query('INSERT INTO campaigns(id,edition_id,title,state) VALUES ($1,$2,$3,$4) RETURNING *', [randomUUID(), editionId, title, campaignState()]);
+    await client.query('INSERT INTO campaign_adventures(campaign_id,title) VALUES ($1,$2)', [created.rows[0].id, title]);
+    return recordHistory(client, created.rows[0], 'Campaign created');
   });
+  events.campaignChanged(result);
   res.status(201).json(result);
 });
-app.get('/api/campaigns/:id/adventure', async (req, res) => {
-  // Membership is checked first so an outsider cannot discover a campaign.
-  const campaign = await accessCampaign(req.params.id, req.user.id);
-  if (campaign.dm_id !== req.user.id) fail('Only the dungeon master can do that.', 403);
-  const result = await pool.query(`SELECT ${adventureColumns} FROM campaign_adventures WHERE campaign_id=$1`, [campaign.id]);
-  res.json(result.rows[0]);
-});
-app.put('/api/campaigns/:id/adventure', async (req, res) => {
-  const result = await transaction(async (client) => {
-    const campaign = await accessCampaign(req.params.id, req.user.id, client, false, true);
-    if (campaign.dm_id !== req.user.id) fail('Only the dungeon master can do that.', 403);
-    const draft = adventure(req.body);
-    const current = await client.query('SELECT revision FROM campaign_adventures WHERE campaign_id=$1 FOR UPDATE', [campaign.id]);
-    if (current.rows[0].revision !== draft.revision) fail('This campaign image changed elsewhere. Reload before saving.', 409);
-    const changed = await client.query(`UPDATE campaign_adventures SET revision=revision+1,title=$1,synopsis=$2,storyline=$3,dm_guidance=$4,canvas=$5 WHERE campaign_id=$6 RETURNING ${adventureColumns}`, [draft.title, draft.synopsis, draft.storyline, draft.dmGuidance, draft.canvas, campaign.id]);
-    await client.query('UPDATE campaigns SET updated_at=now() WHERE id=$1', [campaign.id]);
-    return changed.rows[0];
-  });
-  res.json(result);
-});
 app.get('/api/campaigns/:id', async (req, res) => {
-  const campaign = await accessCampaign(req.params.id, req.user.id);
-  res.json(await campaignView(campaign, pool, req.user.id));
+  res.json(await consistentRead(async (client) => campaignView(await readCampaign(req.params.id, client), client)));
 });
 app.patch('/api/campaigns/:id', async (req, res) => {
-  const result = await transaction(async (client) => {
-    const campaign = await accessCampaign(req.params.id, req.user.id, client, true, true);
-    const status = req.body.status ?? campaign.status;
-    if (!['active', 'archived'].includes(status)) fail('Invalid campaign status.');
-    await client.query('UPDATE campaigns SET title=$1,state=$2,status=$3,updated_at=now() WHERE id=$4', [text(req.body.title, 'Campaign title', 150, true), campaignState(req.body.state), status, campaign.id]);
-    return campaignView(await accessCampaign(campaign.id, req.user.id, client), client, req.user.id);
-  });
-  res.json(result);
+  const { view } = await mutateCampaign(req.params.id, req.body.expectedRevision, 'Campaign updated', (client, campaign) => updateJournal(client, campaign, req.body));
+  res.json(view);
 });
-async function attachCharacter(client, campaign, characterId, ownerId) {
-  if (campaign.status !== 'active') fail('Archived campaigns cannot accept characters.');
-  const character = await client.query('SELECT * FROM characters WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL FOR SHARE', [uuid(characterId), ownerId]);
-  if (!character.rowCount) fail('Choose one of your own characters.', 404);
-  const row = character.rows[0];
-  if (row.edition_id !== campaign.edition_id) fail('Character and campaign must use the same edition.');
-  await client.query('INSERT INTO campaign_party(campaign_id,character_id,user_id,name,sheet) VALUES ($1,$2,$3,$4,$5)', [campaign.id, row.id, ownerId, row.name, { ...row.sheet, hp: row.sheet.maxHp }]);
-  await client.query('UPDATE campaigns SET updated_at=now() WHERE id=$1', [campaign.id]);
-}
-app.post('/api/campaigns/join', async (req, res) => {
-  const code = text(req.body.inviteCode, 'Invite code', 32, true).toUpperCase();
-  const result = await transaction(async (client) => {
-    const found = await client.query('SELECT c.*,u.display_name AS dm_name FROM campaigns c JOIN users u ON u.id=c.dm_id WHERE invite_code=$1 FOR UPDATE OF c', [code]);
-    if (!found.rowCount) fail('Invite code not found.', 404);
-    await attachCharacter(client, found.rows[0], req.body.characterId, req.user.id);
-    return campaignView(found.rows[0], client, req.user.id);
-  });
-  res.json(result);
+app.get('/api/campaigns/:id/adventure', async (req, res) => {
+  res.json(await consistentRead(async (client) => {
+    const campaign = await readCampaign(req.params.id, client);
+    return { ...await readAdventure(campaign.id, client), campaignRevision: campaign.revision };
+  }));
 });
-app.post('/api/campaigns/:id/party', async (req, res) => {
-  const result = await transaction(async (client) => {
-    const campaign = await accessCampaign(req.params.id, req.user.id, client, true, true);
-    await attachCharacter(client, campaign, req.body.characterId, req.user.id);
-    return campaignView(campaign, client, req.user.id);
+app.put('/api/campaigns/:id/adventure', async (req, res) => {
+  const { result, view } = await mutateCampaign(req.params.id, req.body.expectedRevision, 'Adventure updated', async (client, campaign) => {
+    const { expectedRevision, campaignRevision, ...source } = req.body;
+    const draft = adventure(source);
+    const current = await readAdventure(campaign.id, client);
+    if (current.revision !== draft.revision) fail('This campaign image changed elsewhere. Reload before saving.', 409);
+    const changed = await client.query(`UPDATE campaign_adventures SET revision=revision+1,title=$1,synopsis=$2,storyline=$3,dm_guidance=$4,canvas=$5 WHERE campaign_id=$6 RETURNING ${adventureColumns}`, [draft.title, draft.synopsis, draft.storyline, draft.dmGuidance, draft.canvas, campaign.id]);
+    return changed.rows[0];
   });
-  res.json(result);
+  res.json({ ...result, campaignRevision: view.revision });
 });
-app.patch('/api/campaigns/:id/party/:characterId', async (req, res) => {
-  const result = await transaction(async (client) => {
-    const campaign = await accessCampaign(req.params.id, req.user.id, client, true, true);
-    const changed = await client.query('UPDATE campaign_party SET name=$1,sheet=$2 WHERE campaign_id=$3 AND character_id=$4', [text(req.body.name, 'Character name', 100, true), sheet(req.body.sheet, { campaign: true }), campaign.id, uuid(req.params.characterId)]);
-    if (!changed.rowCount) fail('Party character not found.', 404);
-    await client.query('UPDATE campaigns SET updated_at=now() WHERE id=$1', [campaign.id]);
-    return campaignView(campaign, client, req.user.id);
+app.post('/api/campaigns/:id/characters', async (req, res) => {
+  const { view } = await mutateCampaign(req.params.id, req.body.expectedRevision, 'Character added', async (client, campaign) => {
+    if (campaign.status !== 'active') fail('Archived campaigns cannot accept characters.');
+    await client.query('INSERT INTO campaign_characters(campaign_id,character_id,name,sheet) VALUES ($1,$2,$3,$4)', [campaign.id, randomUUID(), text(req.body.name, 'Character name', 100, true), sheet(req.body.sheet, { campaign: true })]);
   });
-  res.json(result);
+  res.status(201).json(view);
 });
-app.delete('/api/campaigns/:id/party/:characterId', async (req, res) => {
-  await transaction(async (client) => {
-    const campaign = await accessCampaign(req.params.id, req.user.id, client, true, true);
-    const changed = await client.query('DELETE FROM campaign_party WHERE campaign_id=$1 AND character_id=$2', [campaign.id, uuid(req.params.characterId)]);
-    if (!changed.rowCount) fail('Party character not found.', 404);
-    await client.query('UPDATE campaigns SET updated_at=now() WHERE id=$1', [campaign.id]);
+app.patch('/api/campaigns/:id/characters/:characterId', async (req, res) => {
+  const { view } = await mutateCampaign(req.params.id, req.body.expectedRevision, 'Character updated', async (client, campaign) => {
+    const found = await client.query('SELECT name,sheet FROM campaign_characters WHERE campaign_id=$1 AND character_id=$2', [campaign.id, uuid(req.params.characterId)]);
+    if (!found.rowCount) fail('Campaign character not found.', 404);
+    const name = req.body.name === undefined ? found.rows[0].name : text(req.body.name, 'Character name', 100, true);
+    const changedSheet = req.body.sheet === undefined ? found.rows[0].sheet : sheet(req.body.sheet, { campaign: true });
+    await client.query('UPDATE campaign_characters SET name=$1,sheet=$2 WHERE campaign_id=$3 AND character_id=$4', [name, changedSheet, campaign.id, req.params.characterId]);
   });
-  res.json({ ok: true });
+  res.json(view);
+});
+app.delete('/api/campaigns/:id/characters/:characterId', async (req, res) => {
+  const { view } = await mutateCampaign(req.params.id, req.body.expectedRevision, 'Character deleted', async (client, campaign) => {
+    const changed = await client.query('DELETE FROM campaign_characters WHERE campaign_id=$1 AND character_id=$2', [campaign.id, uuid(req.params.characterId)]);
+    if (!changed.rowCount) fail('Campaign character not found.', 404);
+  });
+  res.json(view);
+});
+const historyColumns = 'id,revision,label,created_at AS "createdAt"';
+app.get('/api/campaigns/:id/history', async (req, res) => {
+  await readCampaign(req.params.id);
+  res.json((await pool.query(`SELECT ${historyColumns} FROM campaign_history WHERE campaign_id=$1 ORDER BY revision DESC`, [req.params.id])).rows);
+});
+app.get('/api/campaigns/:id/history/:historyId', async (req, res) => {
+  await readCampaign(req.params.id);
+  const found = await pool.query(`SELECT ${historyColumns},snapshot FROM campaign_history WHERE campaign_id=$1 AND id=$2`, [req.params.id, uuid(req.params.historyId)]);
+  if (!found.rowCount) fail('Version not found.', 404);
+  res.json(found.rows[0]);
+});
+app.post('/api/campaigns/:id/history/:historyId/restore', async (req, res) => {
+  const { view } = await mutateCampaign(req.params.id, req.body.expectedRevision, 'Version restored', async (client, campaign) => {
+    const found = await client.query('SELECT snapshot FROM campaign_history WHERE campaign_id=$1 AND id=$2', [campaign.id, uuid(req.params.historyId)]);
+    if (!found.rowCount) fail('Version not found.', 404);
+    const snapshot = found.rows[0].snapshot;
+    await restoreJournal(client, campaign.id, { ...snapshot.campaign, state: snapshot.state });
+    await client.query('UPDATE campaigns SET edition_id=$1 WHERE id=$2', [snapshot.campaign.editionId, campaign.id]);
+    const source = snapshot.adventure;
+    await client.query('UPDATE campaign_adventures SET revision=revision+1,title=$1,synopsis=$2,storyline=$3,dm_guidance=$4,canvas=$5 WHERE campaign_id=$6', [source.title, source.synopsis, source.storyline, source.dmGuidance, source.canvas, campaign.id]);
+    await replaceParty(client, campaign.id, snapshot.party);
+  });
+  res.json(view);
 });
 app.get('/api/campaigns/:id/saves', async (req, res) => {
-  await accessCampaign(req.params.id, req.user.id);
-  const result = await pool.query('SELECT id,label,created_at AS "createdAt",snapshot FROM campaign_saves WHERE campaign_id=$1 ORDER BY created_at DESC,id', [req.params.id]);
-  res.json(result.rows);
+  await readCampaign(req.params.id);
+  const found = await pool.query('SELECT id,label,created_at AS "createdAt",snapshot FROM campaign_saves WHERE campaign_id=$1 ORDER BY created_at DESC,id', [req.params.id]);
+  res.json(found.rows.map((save) => ({ ...save, snapshot: checkpointSnapshot(save.snapshot) })));
 });
 app.post('/api/campaigns/:id/saves', async (req, res) => {
-  const result = await transaction(async (client) => {
-    const campaign = await accessCampaign(req.params.id, req.user.id, client, true, true);
-    const view = await campaignView(campaign, client, req.user.id);
-    const snapshot = { version: 1, title: view.title, editionId: view.editionId, status: view.status, dm: view.dm, party: view.party, state: view.state };
+  const { view, result } = await mutateCampaign(req.params.id, req.body.expectedRevision, 'Checkpoint saved', async (client, campaign) => {
+    await updateJournal(client, campaign, req.body);
+    const current = await campaignView(await readCampaign(campaign.id, client), client);
+    const snapshot = checkpointSnapshot({ version: 1, ...current });
     const saved = await client.query('INSERT INTO campaign_saves(id,campaign_id,label,snapshot) VALUES ($1,$2,$3,$4) RETURNING id,label,created_at AS "createdAt",snapshot', [randomUUID(), campaign.id, text(req.body.label, 'Save name', 150, true), snapshot]);
     return saved.rows[0];
   });
-  res.status(201).json(result);
+  res.status(201).json({ ...result, campaign: view });
 });
 app.post('/api/campaigns/:id/saves/:saveId/restore', async (req, res) => {
-  const result = await transaction(async (client) => {
-    const campaign = await accessCampaign(req.params.id, req.user.id, client, true, true);
+  const { view } = await mutateCampaign(req.params.id, req.body.expectedRevision, 'Checkpoint restored', async (client, campaign) => {
     const found = await client.query('SELECT snapshot FROM campaign_saves WHERE id=$1 AND campaign_id=$2', [uuid(req.params.saveId), campaign.id]);
     if (!found.rowCount) fail('Save not found.', 404);
     const snapshot = found.rows[0].snapshot;
-    await client.query('UPDATE campaigns SET title=$1,state=$2,status=$3,updated_at=now() WHERE id=$4', [snapshot.title, snapshot.state, snapshot.status, campaign.id]);
-    await client.query('DELETE FROM campaign_party WHERE campaign_id=$1', [campaign.id]);
-    for (const member of snapshot.party) {
-      await client.query('INSERT INTO campaign_party(campaign_id,character_id,user_id,name,sheet) VALUES ($1,$2,$3,$4,$5)', [campaign.id, member.characterId, member.userId, member.name, member.sheet]);
-    }
-    return campaignView(await accessCampaign(campaign.id, req.user.id, client), client, req.user.id);
+    await restoreJournal(client, campaign.id, snapshot);
+    await replaceParty(client, campaign.id, snapshot.party);
   });
-  res.json(result);
+  res.json(view);
 });
 app.use((req, res) => res.status(404).json({ error: 'Endpoint not found.' }));
 app.use((error, req, res, next) => {
-  if (error.code === '23505') return res.status(409).json({ error: 'That account or party entry already exists.' });
+  if (error.code === '23505') return res.status(409).json({ error: 'That campaign entry already exists.' });
   if (error.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON.' });
   if (error.status && error.status < 500) return res.status(error.status).json({ error: error.message });
   console.error(error);
