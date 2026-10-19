@@ -26,16 +26,17 @@ Identify the existing component, API endpoint, validation, data model, and check
 affected. Apps live in `apps/`; root npm installs use one lockfile. Extract shared
 code into `packages/` only when multiple apps consume it.
 
-For persisted or protected features, state the relevant invariants:
+For persisted or protected features, consult `docs/product.md` and state relevant invariants:
 
-- Anonymous, owner, DM, party member, and outsider permissions where applicable.
-  Enforce access on each API operation, not only by hiding UI controls.
-- Private profile fields are not party/public fields. Don't log passwords,
-  session tokens, credentials, or personal campaign contents.
-- Characters have stable edition links; campaign copies do not overwrite
-  personal sheets. Edition metadata alone does not automate rules.
-- Saves are immutable/versioned snapshots. Restore preserves history and
-  personal sheets; changes to those semantics must be explicit.
+- Campaign editing/preparation is open to everyone reaching the app; DM is not
+  an ownership/privacy boundary. Live host authority uses browser capabilities,
+  not display names or accounts. Enforce actual protected operations server-side.
+- Preserve unavailable legacy personal data without exposing it. Don't log
+  credentials, capability tokens, private PDFs, or personal campaign contents.
+- Campaign characters retain the campaign's fixed edition. Edition metadata
+  alone does not automate rules; preserve existing sheet formats and HP meaning.
+- Checkpoints and complete versions have distinct restore scopes; preserve
+  immutable history and require expected revisions without silently rebasing drafts.
 - Multi-row mutations are transactional. Use parameterized SQL and validate
   inputs; consider simultaneous requests and rollback behavior when relevant.
 - Schema evolution uses a new numbered migration, never rewrites an applied one.
@@ -56,24 +57,17 @@ performance issues before changing architecture.
 
 ## 4. Verify the requested behavior
 
-- Frontend: `npm run build` (or Docker's targeted web build as documented).
-- API: `docker compose exec -T api npm run test --workspace=@dndharness/api`.
-  Tests must use the dedicated `_test` database. Never clear campaign data.
-- Add meaningful regression coverage for new permissions, save semantics, or
-  consequential data workflows. Do not add tests that simply mirror code or
-  require a new runner for a low-impact reversible change.
-- Exercise changed UI using Playwright and inspect screenshots as images.
-  Database-mutating browser workflows use isolated test fixtures/services,
-  not the main campaign database, unless the user explicitly requests real data.
-- Use condition-based assertions/waits. Check failed requests and console errors.
-  Do not fix a regression by weakening an assertion, skipping the scenario,
-  replacing behavior with a mock, or blindly updating visual baselines.
+Load `verification` for commands, safe targets, proportional check selection,
+and acceptance-linked evidence. Cover affected domain invariants above, including
+failure/conflict and stored-format compatibility where relevant. Use
+`regression-debugging` for failed checks or unexpected behavior; UI execution
+and criteria remain in `frontend-review` and `ui-quality`.
 
 ## 5. Review and finish
 
 Inspect the intended diff, acceptance criteria, verification evidence, and
-documentation. Preserve unfamiliar changes as possible user work. Run focused
-checks once; repeat when edits or failures justify it.
+documentation. Preserve unfamiliar changes as possible user work. Reuse applicable
+evidence and report completion using `verification`.
 
 For a nontrivial completed feature affecting accounts, permissions, migrations,
 campaign saves, or shared controls, request one independent `app-reviewer` pass

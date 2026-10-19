@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef } from 'react';
 import DiceBox from '@3d-dice/dice-box-threejs';
+import { showPreview } from './preview.js';
+import { disposeBox } from './dispose.js';
 
 // Keep physics independent of the CSS viewport so resizing cannot change a
 // predetermined throw. The camera fits this whole area on smaller screens.
@@ -14,7 +16,7 @@ function notationFor(sides, values) {
   return `${values.length}d${sides}@${values.join(',')}`;
 }
 
-export default function DiceScene({ roll, theme, onSettled, onReady, onError, className = 'dice-scene' }) {
+export default function DiceScene({ roll, sides = 20, count = 1, theme, onSettled, onReady, onError, className = 'dice-scene' }) {
   const reactId = useId();
   const sceneId = `dice-scene-${reactId.replace(/[^a-zA-Z0-9]/g, '')}`;
   const containerRef = useRef(null);
@@ -83,7 +85,7 @@ export default function DiceScene({ roll, theme, onSettled, onReady, onError, cl
       const render = box.renderer.render.bind(box.renderer);
       box.renderer.render = (...args) => { if (!destroyed) render(...args); };
     }
-    ready.catch(() => {});
+    ready.catch(() => { disposeBox(box); });
     readyRef.current = ready;
     ready.then((instance) => {
       if (!destroyed) onReadyRef.current?.(instance);
@@ -95,37 +97,37 @@ export default function DiceScene({ roll, theme, onSettled, onReady, onError, cl
       canvas?.removeEventListener('webglcontextlost', onContextLost);
       readyRef.current = null;
       resizeRef.current = null;
-      box.running = false; box.rolling = false;
-      if (box.renderer) {
-        try { box.renderer.domElement?.remove(); } catch {}
-        try { box.renderer.dispose(); } catch {}
-      }
-      if (box.scene) {
-        try { box.scene.traverse((object) => { object.geometry?.dispose(); const materials = Array.isArray(object.material) ? object.material : [object.material]; materials.forEach((material) => material?.dispose()); }); box.scene.clear(); } catch {}
-      }
+      // Initialization may still be loading textures. Its continuation owns
+      // disposal in that case, after the factory has finished creating assets.
+      if (box.initialized) disposeBox(box);
     };
   }, [sceneId, theme]);
 
   useEffect(() => {
-    if (!roll?.id) return;
     let cancelled = false;
+    let clearPreview;
     readyRef.current?.then((box) => {
         if (cancelled) return null;
+        if (!roll?.id) {
+          box.clearDice();
+          clearPreview = showPreview(box, sides, count);
+          return null;
+        }
         const outcome = box.roll(notationFor(roll.sides, roll.values));
         return outcome?.then ? outcome : Promise.resolve(null);
       })
       .then((results) => {
-        if (!cancelled) {
+        if (!cancelled && roll?.id) {
           resizeRef.current?.();
           onSettledRef.current?.(results ?? null);
         }
       })
       .catch((error) => {
         if (!cancelled) onErrorRef.current?.(error);
-        if (!cancelled) onSettledRef.current?.(null);
+        if (!cancelled && roll?.id) onSettledRef.current?.(null);
       });
-    return () => { cancelled = true; };
-  }, [roll, sceneId, theme]);
+    return () => { cancelled = true; clearPreview?.(); };
+  }, [roll, sides, count, sceneId, theme]);
 
   return <div id={sceneId} ref={containerRef} className={className} aria-hidden="true" />;
 }

@@ -30,20 +30,24 @@ Treat the parent's logs/screenshots as supplied evidence, not checks you ran.
 
 1. Does the change satisfy the user's acceptance criteria? Are important error,
    empty/loading, and conflicting-state cases handled?
-2. Does every protected operation enforce ownership/DM/membership server-side?
-   Can an outsider substitute an ID, a player invoke DM actions, or a response
-   expose email/private profile/session data?
+2. Consult `docs/product.md`: campaign edits/preparation are open, not owner/DM
+   protected. Are actual capability boundaries (such as ending a live table)
+   enforced server-side, without trusting display names? Is preserved legacy
+   personal data unavailable, and are capability tokens kept out of responses/logs?
 3. Are database mutations transactional and inputs bounded/validated? Are
-   migrations additive to history and stored JSON versions considered? Does
-   save/restore preserve snapshot immutability and personal character isolation?
+   migrations additive to history and stored JSON versions considered? Do
+   checkpoint/complete-version restores preserve their distinct scopes and history,
+   expected revisions, legacy data, and stored sheet meaning?
 4. For UI changes, load `ui-quality`, read `docs/design.md`, and inspect semantics,
    focus, labels, draft preservation, response feedback, both-theme styling, and
    motion behavior. Preserve the user's approved style rather than imposing taste.
 5. Check effect/listener/timer cleanup, stale responses, duplicate submissions,
    inappropriate state sharing, and observed performance risks. Avoid speculative
    micro-optimization or demands for new frameworks.
-6. Are focused checks meaningful and isolated to a test database? Were browser
-   screenshots actually inspected? Are docs consistent with behavior?
+6. Use `verification` to assess supplied acceptance-linked evidence, safe targets,
+   and limitations. Are docs consistent with behavior? For failures, use
+   `regression-debugging` to suggest discriminating steps; delegate execution to
+   the parent. Neither skill grants runtime or edit access to this reviewer.
 
 ## Output
 

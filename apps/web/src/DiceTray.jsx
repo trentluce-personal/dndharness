@@ -1,8 +1,9 @@
-import { Component, lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Button from './Button.jsx';
+import DiceColorPicker from './DiceColorPicker.jsx';
 import { createUiId } from './uiId.js';
-import { dice3dThemes } from '@dndharness/dice-3d/theme';
 import { reportedValues } from '@dndharness/dice-3d/results';
+import { appearanceTheme, dicePalettes, readAppearance, saveAppearance } from './diceAppearance.js';
 
 const DiceScene = lazy(() => import('@dndharness/dice-3d').then((module) => ({ default: module.DiceScene })));
 
@@ -26,10 +27,23 @@ export default function DiceTray({ welcoming = false }) {
   const [sceneReady, setSceneReady] = useState(false);
   const [sceneFailed, setSceneFailed] = useState(false);
   const [sceneRoll, setSceneRoll] = useState(null);
+  const [appearance, setAppearance] = useState(readAppearance);
+  const customBody = useRef(appearance.id === 'custom' ? appearance.body : null);
+  const palette = useMemo(() => appearanceTheme(appearance, preferences.theme), [appearance, preferences.theme]);
+  const [thumbnails, setThumbnails] = useState(null);
   const pending = useRef(null);
   const timer = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => {
+    let cancelled = false;
+    setThumbnails(null);
+    import('@dndharness/dice-3d').then(({ diceThumbnails }) => diceThumbnails(palette))
+      .then((images) => { if (!cancelled) setThumbnails(images); })
+      .catch(() => { /* The visible dN labels remain usable without WebGL. */ });
+    return () => { cancelled = true; };
+  }, [palette]);
   const use3d = preferences.motion !== 'reduce' && !sceneFailed;
+  useEffect(() => { setSceneReady(false); }, [palette, use3d]);
   function finish() {
     const next = pending.current;
     if (!next) return;
@@ -45,15 +59,16 @@ export default function DiceTray({ welcoming = false }) {
     else finish();
   }
   useEffect(() => {
-    const observer = new MutationObserver(() => {
+    const syncPreferences = () => {
       // Clear the old throw before mounting a replacement scene. Otherwise
       // enabling motion can replay it while the next roll is already starting.
       finish();
-      setSceneReady(false);
       setSceneRoll(null);
       setPreferences({ theme: document.documentElement.dataset.theme ?? 'light', motion: document.documentElement.dataset.motion ?? 'full' });
-    });
+    };
+    const observer = new MutationObserver(syncPreferences);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-motion'] });
+    syncPreferences();
     return () => observer.disconnect();
   }, []);
   function roll() {
@@ -64,17 +79,41 @@ export default function DiceTray({ welcoming = false }) {
     if (!use3d) finish();
     else { setRolling(true); setSceneRoll(next); timer.current = setTimeout(failScene, 15000); }
   }
-  return <section className={`dice-tray${welcoming ? ' welcoming-dice' : ''}`} aria-labelledby="dice-heading">
-    <div className="section-heading"><div><p className="eyebrow">{welcoming ? 'Dice roller · No account needed' : 'A little chance'}</p><h2 id="dice-heading">{welcoming ? 'Try your luck.' : 'Dice roller'}</h2></div><span className="quiet-badge">Only visible to you</span></div>
-    <p className="form-note">Die type · d20 = 20 sides</p>
-    <div className="dice-types" aria-label="Die type">{[4, 6, 8, 10, 12, 20, 100].map((value) => <Button key={value} className={`die-choice secondary ${sides === value ? 'selected' : ''}`} aria-pressed={sides === value} disabled={rolling} onClick={() => setSides(value)}>d{value}</Button>)}</div>
+  function selectDice(nextSides, nextCount) {
+    if (pending.current) return;
+    if (nextSides === sides && nextCount === count) return;
+    setSides(nextSides); setCount(nextCount);
+    setSceneRoll(null); setResult(null);
+  }
+  function selectAppearance(next) {
+    if (pending.current) return;
+    if (next.id === 'custom') customBody.current = next.body;
+    setSceneRoll(null);
+    setAppearance(next);
+    saveAppearance(next);
+  }
+  const Heading = welcoming ? 'h2' : 'h1';
+  return <section className={`dice-tray${welcoming ? ' welcoming-dice' : ''}`} aria-labelledby="dice-heading" style={{ '--dice-body': palette.background, '--dice-ink': palette.foreground, '--dice-edge': palette.edge }}>
+    <div className="section-heading"><div><p className="eyebrow">{welcoming ? 'Dice roller · No account needed' : 'A little chance'}</p><Heading id="dice-heading">{welcoming ? 'Try your luck.' : 'Dice roller'}</Heading></div><span className="quiet-badge">Only visible to you</span></div>
+    <div className="dice-setup">
+      <div className="dice-setup-heading">
+        <p id="die-type-label" className="dice-type-label">Die type <span className="field-hint">d20 = 20 sides</span></p>
+        <div className="dice-appearance">
+          <DiceColorPicker value={appearance.id} disabled={rolling}
+            choices={[...dicePalettes.map((choice) => ({ ...choice, body: appearanceTheme(choice, preferences.theme).background })), { id: 'custom', label: 'Custom color', body: customBody.current ?? palette.background }]}
+            onChange={(id) => selectAppearance(id === 'custom' ? { id, body: customBody.current ?? palette.background } : { id })} />
+          {appearance.id === 'custom' && <label className="dice-custom">Custom dice body color<input type="color" value={appearance.body} disabled={rolling} onChange={(event) => selectAppearance({ id: 'custom', body: event.target.value })} /></label>}
+        </div>
+      </div>
+      <div className="dice-types" role="group" aria-labelledby="die-type-label">{[4, 6, 8, 10, 12, 20, 100].map((value) => <Button key={value} className={`die-choice secondary ${sides === value ? 'selected' : ''}`} aria-pressed={sides === value} disabled={rolling} onClick={() => selectDice(value, count)}><span className="die-name">D{value}</span><span className="die-thumbnail" aria-hidden="true">{thumbnails?.[value] && <img src={thumbnails[value]} alt="" onError={(event) => { event.currentTarget.hidden = true; }} />}</span></Button>)}</div>
+    </div>
     <div className={`dice-workbench${use3d ? ' has-3d' : ''}`}>
-      {use3d ? <div className="dice-scene-frame"><SceneBoundary onError={failScene}><Suspense fallback={null}><DiceScene key={preferences.theme} roll={sceneRoll} theme={dice3dThemes[preferences.theme]} onReady={() => setSceneReady(true)} onSettled={settled} onError={failScene} /></Suspense></SceneBoundary>{!sceneReady && <p className="scene-placeholder" role="status">Preparing 3D dice…</p>}{sceneReady && !sceneRoll && <p className="scene-placeholder">Choose your dice, then roll.</p>}</div> : <div className="dice-display" aria-hidden="true"><span>{result?.total ?? '20'}</span><small>{result ? `${result.values.length}d${result.sides}` : 'Ready when you are'}</small></div>}
-      <div className="dice-controls"><div className="form-grid"><label>Number of dice<input type="number" min="1" max="10" value={count} disabled={rolling} onChange={(event) => setCount(Math.max(1, Math.min(10, Number(event.target.value) || 1)))} /></label><label>Modifier<input type="number" min="-100" max="100" value={modifier} aria-describedby="modifier-hint" disabled={rolling} onChange={(event) => setModifier(Math.max(-100, Math.min(100, Number(event.target.value) || 0)))} /><span id="modifier-hint" className="field-hint">Added to the total. Use 0 for none.</span></label></div><Button onClick={roll} disabled={rolling}>{rolling ? 'Rolling…' : `Roll ${count}d${sides}`} <span aria-hidden="true">↗</span></Button>
+      {use3d ? <div className="dice-scene-frame"><SceneBoundary onError={failScene}><Suspense fallback={null}><DiceScene key={palette.name} roll={sceneRoll} sides={sides} count={count} theme={palette} onReady={() => setSceneReady(true)} onSettled={settled} onError={failScene} /></Suspense></SceneBoundary>{!sceneReady && <p className="scene-placeholder" role="status">Preparing 3D dice…</p>}</div> : <div className="dice-display" aria-hidden="true"><span>{result?.total ?? `d${sides}`}</span><small>{result ? `${result.values.length}d${result.sides}` : `${count}d${sides} · Preview`}</small></div>}
+      <div className="dice-controls"><div className="form-grid"><label>Number of dice<input type="number" min="1" max="10" value={count} disabled={rolling} onChange={(event) => selectDice(sides, Math.max(1, Math.min(10, Math.trunc(Number(event.target.value)) || 1)))} /></label><label>Modifier<input type="number" min="-100" max="100" value={modifier} aria-describedby="modifier-hint" disabled={rolling} onChange={(event) => setModifier(Math.max(-100, Math.min(100, Number(event.target.value) || 0)))} /><span id="modifier-hint" className="field-hint">Added to the total. Use 0 for none.</span></label></div><Button onClick={roll} disabled={rolling}>{rolling ? 'Rolling…' : `Roll ${count}d${sides}`} <span aria-hidden="true">↗</span></Button>
         <p className="roll-result" role="status" aria-live="polite">{rolling ? 'Rolling the dice…' : result ? `${result.values.join(' + ')}${result.modifier ? ` ${result.modifier > 0 ? '+' : '−'} ${Math.abs(result.modifier)}` : ''} = ${result.total}` : 'Your result will appear here.'}</p>
       </div></div>
     {sceneFailed && <p className="form-note" role="status">3D visuals are unavailable. You can still roll dice and read the results.</p>}
     {history.length > 0 && <div className="roll-history"><span>Recent rolls</span>{history.map((roll) => <span className="roll-chip" key={roll.id} title={`${roll.values.join(', ')}; modifier ${roll.modifier}`}>{roll.values.length}d{roll.sides} <strong>{roll.total}</strong></span>)}</div>}
-    <p className="form-note">Rolls are not shared with the group or saved to a campaign. Recent rolls clear when you leave this view or reload.</p>
+    <p className="form-note dice-history-note">Recent rolls clear when you leave or reload. Dice color is saved in this browser.</p>
   </section>;
 }

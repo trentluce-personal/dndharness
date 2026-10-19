@@ -74,10 +74,9 @@ issues, or optional polish. Ground findings in code or reproduced behavior.
 
 ## Evidence and finish
 
-Run the documented build for frontend implementation changes. Browser evidence
-must name the states/viewports actually inspected and any errors observed. Use
-fresh selectors and condition-based waits; wait for finite effects before layout
-screenshots. Don't call a scan a full accessibility audit or emulation a real-device test.
+Use `verification` for applicable checks and acceptance-linked evidence, and
+`frontend-review` for browser execution. Use `regression-debugging` for failures.
+Don't call a scan a full accessibility audit or emulation a real-device test.
 
 If reviewing only, report concise findings as:
 `severity — path:line — observed issue — user impact — suggested correction`.

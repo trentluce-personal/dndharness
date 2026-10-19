@@ -1,6 +1,6 @@
 # Product intent
 
-## Current experience: sessions only (supersedes campaign-page UX)
+## Current experience: Home and Dice roller (supersedes campaign-page UX)
 
 The app opens to **Home**, restoring the original illustrated map/d20 hero,
 large split serif heading with burgundy italic accent, caption, and decorative
@@ -14,12 +14,18 @@ honor the app's saved motion preference, and mobile stacks map/text and cards.
 Hosting opens a compact dialog with **Session name** (1–150 characters) and
 **Your name** (1–100). There is no campaign, edition, or account prerequisite.
 The joined session retains the familiar session heading and warm ornamented roster panel,
-with Back to Home and join/leave/host-end controls. There are no navigation tabs,
-campaign editors, journals, sheets, dice,
+with Back to Home and join/leave/host-end controls. Native **Home** and **Dice roller**
+navigation links use the existing workspace tabs. There are no campaign editors, journals, sheets,
 battle, or scenario tools in the current interface.
 
 `/` and `/sessions` show the same feed; `/sessions/host` opens its dialog and
-`/sessions/:id` opens the roster. Legacy campaign/character/profile/dice routes
+`/sessions/:id` opens the roster. All session routes select Home; only the feed
+marks Home as the current page. `/dice` and `/dice/` open the existing local dice
+tray, with recent history cleared on leaving or reload. Rolls are not saved or
+shared; full motion uses local 3D assets and reduced motion uses a text fallback.
+Dice navigation retains session membership and heartbeats, and respects host/join
+draft guards. Links support deep reloads, Back/Forward, and native new tabs.
+Nested `/dice/...` destinations are unavailable. Legacy campaign/character/profile routes
 show an unavailable page with Back to Home. Previous storage, APIs, and
 dormant components are retained without exposing their GUI. This simplification
 does not delete or reinterpret existing campaign data. It removes capabilities,
@@ -97,7 +103,7 @@ future rules will work automatically.
 ## Archived model: shared campaigns, characters, checkpoints, and versions
 
 Historical model retained for understanding stored data and dormant code. Its
-campaign-based UI and live-hosting requirements are superseded by sessions only:
+campaign-based UI and live-hosting requirements are superseded by the Home/session UI:
 
 - **Open workspace:** no accounts, login, profiles, personal library, or invite
   codes. Anyone reaching the app can edit, save, and use any campaign. DM remains

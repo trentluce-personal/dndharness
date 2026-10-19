@@ -1,6 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { workspaceRoute, characterUrl, campaignUrl, sessionUrl, interceptLink, draftSignature, workspaceBreadcrumbs, campaignViews } from '../src/workspaceRoutes.js';
+import { sections, workspaceRoute, characterUrl, campaignUrl, sessionUrl, interceptLink, draftSignature, workspaceBreadcrumbs, campaignViews } from '../src/workspaceRoutes.js';
+
+test('Home and Dice roller navigation destinations resolve to their selected sections', () => {
+  assert.deepEqual(sections, [['sessions', 'Home', '/'], ['dice', 'Dice roller', '/dice']]);
+  for (const [section, , href] of sections) assert.equal(workspaceRoute(href).section, section);
+});
+
+test('only exact dice routes open the roller and preserve native navigation', () => {
+  for (const path of ['/dice', '/dice/']) {
+    assert.deepEqual(workspaceRoute(path), { section: 'dice' });
+    const anchor = { href: `http://local${path}`, target: '', hasAttribute: () => false };
+    assert.equal(interceptLink({ button: 0 }, anchor, 'http://local'), true);
+    for (const modifier of ['ctrlKey', 'metaKey', 'shiftKey', 'altKey']) assert.equal(interceptLink({ button: 0, [modifier]: true }, anchor, 'http://local'), false);
+    assert.equal(interceptLink({ button: 0 }, { ...anchor, target: '_blank' }, 'http://local'), false);
+  }
+  for (const path of ['/dice/saved', '/dice/saved/history', '/dice/%invalid', '/dice//', '/dicebox']) assert.deepEqual(workspaceRoute(path), { section: 'missing' });
+});
 
 test('dormant breadcrumb helper retains one current leaf for preserved screens', () => {
   for (const [route, expected] of [
@@ -43,8 +59,8 @@ test('root and session aliases resolve to the feed; host and encoded session lin
   for (const path of ['/sessions/%invalid', '/sessions/table/ready', '/sessions/table/characters']) assert.equal(workspaceRoute(path).section, 'missing');
 });
 
-test('all legacy campaign, character, profile and dice routes are unavailable on fresh loads', () => {
-  for (const base of ['/characters', '/campaigns', '/dice', '/profile']) {
+test('all legacy campaign, character and profile routes are unavailable on fresh loads', () => {
+  for (const base of ['/characters', '/campaigns', '/profile']) {
     for (const suffix of ['', '/', '/saved', '/saved/history', '/%invalid', '/one/two']) {
       assert.deepEqual(workspaceRoute(`${base}${suffix}`), { section: 'legacy' });
     }

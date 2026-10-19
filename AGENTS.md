@@ -10,7 +10,8 @@ implemented capabilities; `docs/design.md` records the approved experience.
 
 The frontend uses React, Vite, plain JavaScript, and npm. See README.md for
 development and build commands. The API uses Express and PostgreSQL, with
-versioned SQL migrations and server-side sessions. Docker Compose runs all three.
+versioned SQL migrations and an open shared campaign workspace. Live sessions use
+browser capabilities and in-memory presence. Docker Compose runs all three.
 Confirm major architecture and dependency choices with the user before adding them.
 This is an npm-workspace monorepo: runnable apps live in `apps/`, and shared
 packages belong in `packages/` when multiple apps need them. Install from the
@@ -33,11 +34,11 @@ local tooling so each app can later be containerized independently.
 - Prefer local operation; ask before introducing hosted services.
 - Keep credentials and personal campaign data out of Git.
 - Update the README when setup or usage changes.
-- Run `npm run build` for frontend changes. For API changes, run
-  `docker compose exec -T api npm run test --workspace=@dndharness/api`.
-  The runner uses a dedicated `_test` database; never run destructive checks
-  against campaign data. No lint or frontend unit runner is configured.
-  Run focused checks for changes and report anything that could not be verified.
+- Use `verification` to select focused checks and report acceptance-linked evidence.
+  `npm run test:web` runs existing Node logic tests; `npm run build` checks frontend
+  builds. No component test runner or lint tool is configured. API checks and
+  database/browser isolation requirements are defined in that skill; never run
+  destructive checks against campaign data. Use `regression-debugging` for failures.
 - For frontend appearance or interaction changes, load the `frontend-review`
   skill and inspect the running app with `npm run browser -- ...`. Read captured
   screenshots as images; a successful build alone is not visual verification.
@@ -68,7 +69,8 @@ The project-local `/small-feature` and `/dispatch-feature` commands live in
 using the `feature-dispatch` skill and existing focused subagents; it cannot
 edit files and only has narrow Git-inspection shell access.
 The frontend review skill lives in `.opencode/skills/frontend-review/`.
-Additional skills are `ui-quality` and `web-feature`; the read-only reviewer is
+Additional skills are `ui-quality`, `web-feature`, `verification`, and
+`regression-debugging`; the read-only reviewer is
 `.opencode/agents/app-reviewer.md`. Restart OpenCode after editing these files.
 
 Use the repo-local CLI installed by scripts/install-opencode.ps1. Its version

@@ -9,14 +9,15 @@ The [design guide](./docs/design.md) records the approved visual and interaction
 ## Frontend
 
 A local React + Vite app, Express API, and PostgreSQL database. The current UI is
-**sessions only**: Home offers **Host a session** and a feed of open sessions.
+**Home and Dice roller**: Home offers **Host a session** and a feed of open sessions.
 The original illustrated map/d20 hero is restored, with its split serif heading,
 burgundy italic accent, map caption, and decorative divider. The feed reuses the
 original framed folio/book covers and gold line art, with real session titles,
 host names, counts, and Join/Open actions on parchment/theme-aware metadata surfaces.
 The familiar 1160px shell, branded header, warm ornamented roster panel,
 theme/motion controls, and site footer retain the original fantasy identity.
-Campaigns, character, and Dice capabilities are unavailable; there is no separate
+Native **Home** and **Dice roller** navigation links sit above the page content.
+Campaigns and character capabilities are unavailable; there is no separate
 Live sessions navigation tab.
 
 1. Open `/`. Choose **Host a session**, enter **Session name** (1–150 characters)
@@ -26,6 +27,9 @@ Live sessions navigation tab.
 3. The session page shows the roster. Enter your name to join; players can leave,
    and the host can end the session after confirmation. **Back to Home** returns
    to the feed. `/sessions` is a feed alias; `/sessions/host` opens the host dialog.
+4. Open **Dice roller** (`/dice` or `/dice/`) for local dice and recent rolls.
+   Rolls are not shared or saved; history clears on leaving the view or reloading.
+   Workspace navigation keeps session membership and presence renewal active.
 
 Sessions are ephemeral, held in API memory. Presence renews every 30 seconds and
 expires after 5 minutes without renewal; host expiry or an API restart closes the
@@ -37,7 +41,7 @@ memberships and offer **Retry session check**. Failed host/join requests keep en
 cancel/navigation protects meaningful entries and pending lifecycle requests.
 
 LAN access remains an explicit opt-in, documented below. Discovery does not scan
-other installations. There are no battle, scenario, journal, sheet, or dice tools
+other installations. There are no battle, scenario, journal, or sheet tools
 in this UI. Existing campaign/character/history storage and legacy APIs are retained;
 old GUI routes show an unavailable page with **Back to Home**. Session actions
 do not create dummy campaigns or mutate saved campaign data. Historical feature
@@ -165,7 +169,7 @@ from `APP_ORIGINS`, and run `docker compose up -d --wait web api` again.
 
 ### Archived usage: shared campaigns (not in the current GUI)
 
-**Historical reference only.** The session-only UX above supersedes this section,
+**Historical reference only.** The Home/session UX above supersedes this section,
 the former campaign-based hosting instructions, and the import instructions below.
 Their storage and APIs are retained; their pages are unavailable.
 
@@ -416,7 +420,7 @@ seed campaigns, truncate campaign data, or use `docker compose down -v` for chec
 Existing frontend Node logic tests run with `npm run test:web`; no component test
 runner or lint tool is configured.
 
-### Archived implementation: dice tray and 3D visuals (unavailable in the GUI)
+### Dice roller and 3D visuals
 
 Roll d4/d6/d8/d10/d12/d20/d100, up to ten dice, with a modifier. Results use
 browser cryptographic randomness with rejection sampling; animation does not
@@ -431,6 +435,16 @@ rendering error, context loss, or 15-second roll timeout switches to the text
 fallback without losing the roll. d100 uses a tens die and a units die.
 The tray fits a fixed physics area to the screen; resize updates wait for a
 running throw to settle so changing window size does not alter its outcome.
+
+Each die-type button shows a static rendering of the real 3D dice (d100 is a
+tens/units pair), including in reduced motion, with each die's label above its thumbnail.
+The **Dice color** dropdown shows body-color swatches beside named palettes and
+the selected value; **Custom color** reveals
+a body-color input with automatically contrasting numerals. The
+choice applies to thumbnails, the tray preview, and rolls, and is saved only in
+this browser; **Theme default** follows light/dark mode. Appearance controls are
+disabled during throws. Changing appearance does not roll or add history.
+Without WebGL, the labeled die buttons and text results remain usable.
 
 ### Run locally
 
@@ -540,7 +554,7 @@ and edition-specific data should remain separate, small, composable pieces.
 
 - `apps/web/src/App.jsx`: original shell, brand, theme/motion header, footer, and session-only bootstrap.
 - `apps/web/src/styles.css`: responsive styling using local system fonts.
-- `apps/web/src/SharedWorkspace.jsx`: feed/dialog/roster routing and draft guard.
+- `apps/web/src/SharedWorkspace.jsx`: Home/Dice roller navigation, feed/dialog/roster routing, and draft guard.
 - `apps/web/src/LandingHero.jsx`: restored original decorative map/d20 hero and single Host a session action.
 - `apps/web/src/FolioCover.jsx`: presentation adapted from the original CampaignLibrary cover markup and SVG, without campaign behavior.
 - `apps/web/src/LiveSessions.jsx`: Home folio feed, compact host form, and roster controls.
@@ -587,6 +601,8 @@ dependencies or external plugins:
 | `.opencode/skills/web-feature/SKILL.md` | Acceptance criteria → implementation → focused checks → review |
 | `.opencode/skills/ui-quality/SKILL.md` | Controls, forms, accessibility, responsiveness, and interaction criteria |
 | `.opencode/skills/frontend-review/SKILL.md` | Real browser interactions and screenshot inspection |
+| `.opencode/skills/verification/SKILL.md` | Focused check selection, safe targets, and acceptance-linked completion evidence |
+| `.opencode/skills/regression-debugging/SKILL.md` | Reproduction, discriminating diagnostics, minimal causal fixes, and regression evidence |
 | `.opencode/agents/app-reviewer.md` | Independent review of requirements, permissions, data integrity, and UI |
 | `.opencode/skills/feature-dispatch/SKILL.md` | Scoped parallel workstreams, shared contracts, integration, and verification |
 | `.opencode/agents/dispatcher.md` | Read-only default coordinator using existing agents with specialist briefs |
@@ -596,6 +612,12 @@ The command loads `web-feature`; UI work uses `ui-quality` and `frontend-review`
 with the design guide. These workflows scale to the change: small edits get
 focused checks, while consequential account/save/schema/shared-control changes
 get one independent reviewer pass when available.
+
+`verification` owns check selection and evidence; `regression-debugging` handles
+failures. Report acceptance → command/scenario → target/environment → result and
+artifact/limitations, distinguishing **pass**, **fail**, **blocked**, and **static
+inspection**. Reuse still-applicable evidence; repeat only for relevant edits,
+failures, or unresolved concerns. Optional checks are not universal gates.
 
 To request a review directly, use:
 
@@ -724,9 +746,10 @@ or commit them.
 Deep Infra usage is billed through your Deep Infra account. OpenCode stores
 the key in your user profile, outside the repository.
 
-Session sharing is disabled. File edits, shell commands, and access outside
-the project require approval. These settings do not prevent code from being
-sent to the selected model provider.
+Session sharing is disabled. Project permissions allow file edits, shell commands,
+and access outside the project; agent-specific restrictions keep the dispatcher
+and independent reviewer read-only with limited Git inspection. These settings do
+not prevent code from being sent to the selected model provider.
 
 OpenCode loads `AGENTS.md` automatically; there is no need to run `/init`.
 To inspect the resolved configuration without making a model request, run:
@@ -734,3 +757,8 @@ To inspect the resolved configuration without making a model request, run:
 ```powershell
 opencode debug config
 ```
+
+Resolved configuration can contain credentials from local settings; inspect it
+locally and do not commit or paste secret-bearing output. This inspection does
+not reload the current session: quit and restart OpenCode after editing skills,
+agents, commands, or configuration.

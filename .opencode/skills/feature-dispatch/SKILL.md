@@ -73,11 +73,11 @@ Shared contract: <agreed API/data/UI details; dependencies already ready>
 Write scope: <exclusive files/directories and explicit exclusions>
 Context: <relevant files, existing changes, decisions, and product constraints>
 Mode: <implement within scope OR research/review only>
-Checks: <focused commands/scenarios; isolated fixtures where needed>
+Checks: <use verification for focused commands/scenarios, targets, and evidence>
 Coordination: Shared checkout. Preserve existing changes. Do not spawn agents,
 commit, push, change dependencies without explicit approved scope, or edit outside scope. Report blockers and
 needed cross-boundary changes to the dispatcher.
-Return: Changed files, behavior delivered, checks actually run with outcomes,
+Return: Changed files, behavior delivered, acceptance-linked verification evidence,
 remaining risks/blockers, and integration notes. Distinguish observations from
 assumptions; do not claim checks you did not perform.
 ```
@@ -102,15 +102,13 @@ Workers may run non-mutating scoped checks; give shared-state checks one owner
 at a time. Browser reviewers use distinct named sessions and artifact paths,
 and close only their own sessions. Run database-mutating verification only
 against isolated test data, never the main campaign database. The existing API
-runner shares one `_test` database, so do not run it concurrently.
+runner shares `dndharness_test`, so serialize all suite invocations. Fresh browser
+profiles do not isolate persistent writes; use `verification` for target safety.
 
-Verify the integrated feature with the documented checks: `npm run build` for
-frontend changes and `docker compose exec -T api npm run test --workspace=@dndharness/api`
-for API changes. UI changes require real interactions and screenshot image
-inspection using `frontend-review` and `ui-quality`. Inherit meaningful worker
-evidence when still applicable, but have a worker run final integrated checks needed to
-cover wiring and any subsequent edits. Do not repeatedly run unchanged checks
-without a failure or unresolved concern.
+Load `verification` to select integrated checks and inspect acceptance-linked
+worker evidence. Reuse evidence still applicable; delegate only checks needed for
+wiring, subsequent edits, failures, or unresolved concerns. Delegate failures with
+`regression-debugging`; the dispatcher never executes diagnostics or fixes itself.
 
 ## 5. Independent review and completion
 

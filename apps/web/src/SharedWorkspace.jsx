@@ -1,7 +1,9 @@
 import { useLayoutEffect, useRef } from 'react';
 import Button from './Button.jsx';
 import Dialog from './Dialog.jsx';
+import DiceTray from './DiceTray.jsx';
 import useLiveWorkspace from './useLiveWorkspace.js';
+import { sections } from './workspaceRoutes.js';
 import { HostSession, LiveSession, SessionDirectory } from './LiveSessions.jsx';
 
 export default function SharedWorkspace({ navigation }) {
@@ -21,7 +23,14 @@ export default function SharedWorkspace({ navigation }) {
   }, [route.section, route.id, route.view]);
 
   return <div ref={workspace} className="account-workspace">
-    {route.section !== 'sessions' ? <section className="dashboard-intro">
+    <nav className="workspace-nav" aria-label="Workspace">
+      <div className="workspace-tabs">{sections.map(([section, label, href]) => <a
+        key={section} href={href}
+        className={`action-button nav-tab${route.section === section ? ' selected' : ''}`}
+        aria-current={route.section === section && !route.id && !route.view ? 'page' : undefined}
+      >{label}</a>)}</div>
+    </nav>
+    {route.section === 'dice' ? <DiceTray /> : route.section !== 'sessions' ? <section className="dashboard-intro">
       <p className="eyebrow">Your local table</p>
       <h1>This page is unavailable</h1>
       <div className="form-actions"><a className="action-button secondary" href="/">Back to Home</a></div>

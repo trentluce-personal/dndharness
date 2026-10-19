@@ -2,8 +2,8 @@
 
 ## Product and direction
 
-A local D&D table for friends and family. The current experience is **sessions
-only**, superseding the earlier Home/Campaigns/Live sessions/Dice navigation and
+A local D&D table for friends and family. The current experience is **Home and
+Dice roller**, superseding the earlier Home/Campaigns/Live sessions/Dice navigation and
 campaign-based hosting. Start with the smallest useful feature.
 
 The approved direction is **classy, warm fantasy with expressive interactions**.
@@ -12,7 +12,7 @@ seal, and restrained ornament. This is the user's chosen identity; a third-party
 skill's dislike of cream backgrounds, italic headings, or cards is not a reason
 to redesign it. Extend the existing visual vocabulary before inventing another.
 
-## Current session-only UX
+## Current Home and Dice roller UX
 
 - Retain the original 1160px app shell and content proportions, branded d20 header,
   theme/motion controls, and two-part site footer. Restore the actual original
@@ -27,7 +27,7 @@ to redesign it. Extend the existing visual vocabulary before inventing another.
   titles, and parchment/theme-aware lower metadata surfaces. Reuse the existing
   cover CSS and adapted presentational markup, showing only real host names,
   participant counts, and **Join** / **Open**; no edition, campaign, archive, or
-  saved-adventure badges/placeholders. No additional join CTA or navigation tabs.
+  saved-adventure badges/placeholders. No additional join CTA.
   Hero and card entrances are finite and honor `data-motion` and the saved override.
   Empty copy is exactly **No sessions are live right now.** Connection/error
   feedback uses the original quiet badge style beside the heading, accessible,
@@ -43,16 +43,30 @@ to redesign it. Extend the existing visual vocabulary before inventing another.
   End requires a concise confirmation. A short host-expiry/server-restart note
   belongs in hosting, not on the homepage.
 - `/` and `/sessions` are feed aliases; `/sessions/host` is a direct dialog link.
+  Native **Home** / **Dice roller** links reuse `workspace-nav` and tab styles.
+  All session routes select Home, with `aria-current="page"` only on the feed;
+  Dice roller is selected/current on exact `/dice` and `/dice/`. Nested dice routes
+  are unavailable. Deep reloads, Back/Forward, and native new tabs work.
+  Dice has its own view using the existing tray heading, local-only badge/history
+  note, themed local 3D assets, and reduced-motion fallback. Keep the Home hero
+  and feed intact. Navigation preserves session presence and host/join draft guards.
   Legacy routes show simple unavailability and Back to Home. No journal,
-  sheet, campaign, dice, battle, scenario, or help/configuration panels are active.
+  sheet, campaign, battle, scenario, or help/configuration panels are active.
 - Keep existing fantasy tokens, responsive wrapping, 44px primary targets,
   native dialogs/focus, keyboard links, and reduced-motion/theme preferences.
   Reuse `styles.css` and `workspace.css` for shell, dashboard, panel, roster, and
   form styling; the session feed and room share the full main-content width.
+- Dice setup groups die type and a select-only **Dice color** dropdown above equal
+  tiles, with each dN label above its static 3D thumbnail. **Custom color** reveals
+  a labeled native body-color input; switching palettes retains the custom color
+  for the current view. Options and the selected value show solid body-color
+  circles beside their text; Theme default follows the app theme. Reuse the
+  EditionPicker keyboard/exploration pattern. Color controls disable during throws. Use the existing
+  wine selection treatment, 44px inputs, and 12/16/24px spacing.
 
 The campaign and former live-table specifications below are **archival** wherever
 they describe removed screens. They preserve context for dormant components and
-stored data; this session-only contract takes precedence.
+stored data; this Home and Dice roller contract takes precedence.
 
 ## Archived beginner-first campaign UX (superseded)
 

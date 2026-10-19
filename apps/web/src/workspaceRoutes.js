@@ -1,8 +1,9 @@
-export const sections = [['sessions', 'Sessions', '/']];
+export const sections = [['sessions', 'Home', '/'], ['dice', 'Dice roller', '/dice']];
 
 export function workspaceRoute(path) {
   if (path === '/' || path === '/sessions' || path === '/sessions/') return { section: 'sessions' };
-  if (/^\/(campaigns|characters|profile|dice)(\/|$)/.test(path)) return { section: 'legacy' };
+  if (path === '/dice' || path === '/dice/') return { section: 'dice' };
+  if (/^\/(campaigns|characters|profile)(\/|$)/.test(path)) return { section: 'legacy' };
   if (path === '/sessions/host' || path === '/sessions/host/') return { section: 'sessions', view: 'host' };
   const session = /^\/sessions\/([^/]+)\/?$/.exec(path);
   if (session) {
