@@ -63,6 +63,24 @@ to redesign it. Extend the existing visual vocabulary before inventing another.
   circles beside their text; Theme default follows the app theme. Reuse the
   EditionPicker keyboard/exploration pattern. Color controls disable during throws. Use the existing
   wine selection treatment, 44px inputs, and 12/16/24px spacing.
+- Place **Tray background** beside Dice color using the same labeled combobox,
+  textured circle swatches, keyboard behavior, and disabled-during-throws state.
+  Offer Theme default, Green felt, Burgundy felt, Midnight felt, Brown leather, and Stone tiles.
+  Theme default preserves the original theme-aware tray; fixed finishes use subtle
+  seeded local SVG grain (soft nonwoven felt nap / irregular leather relief), muted
+  colors, and restrained directional light beneath the transparent 3D canvas and
+  behind fallback dice. Grain keeps a fixed CSS-pixel scale across viewport sizes;
+  swatches share the actual surfaces. Stone uses cool gray, staggered 128px floor tiles,
+  quiet grout, mineral grain, and soft bevels. No animated noise or physical-behavior differences.
+  Save independently of dice color/theme; never reset results or regenerate 3D
+  resources for a background change. Stack controls on narrow screens.
+- After dice settle, show a nonmodal **Roll total** card inside the shared 3D/fallback
+  tray frame. A local gray/grayscale backdrop dims only the tray and dice. Use a
+  theme-neutral surface, prominent total, compact notation, and multi-die values
+  without a redundant equation. Announce notation/total once politely without moving
+  focus. **Close result** (44px target) or Escape while focused inside the tray
+  dismisses it; new rolls and type/count changes hide it, preserving five-roll history.
+  No timeout. Appearance changes retain a valid result; reduced motion is immediate.
 
 The campaign and former live-table specifications below are **archival** wherever
 they describe removed screens. They preserve context for dormant components and

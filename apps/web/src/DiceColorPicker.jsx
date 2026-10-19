@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { ripple } from './ripple.js';
 
 // Select-only combobox behavior follows EditionPicker; exploration is not a change.
-export default function DiceColorPicker({ choices, value, onChange, disabled }) {
+export default function DiceColorPicker({ choices, value, onChange, disabled, label = 'Dice color' }) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [placement, setPlacement] = useState({ above: false, height: 320 });
@@ -98,13 +98,13 @@ export default function DiceColorPicker({ choices, value, onChange, disabled }) 
   return <div className="dice-color-picker" ref={root} onBlur={(event) => {
     if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
   }}>
-    <label id={`${menuId}-label`} htmlFor={`${menuId}-trigger`}>Dice color</label>
+    <label id={`${menuId}-label`} htmlFor={`${menuId}-trigger`}>{label}</label>
     <button id={`${menuId}-trigger`} ref={trigger} className="edition-trigger dice-color-trigger" type="button" role="combobox"
       aria-labelledby={`${menuId}-label`} aria-expanded={expanded} aria-controls={menuId} aria-haspopup="listbox"
       aria-activedescendant={expanded ? `${menuId}-${activeIndex}` : undefined} disabled={disabled}
       onKeyDown={handleKey} onPointerDown={ripple}
       onClick={() => { search.current.text = ''; setActiveIndex(selectedIndex); setOpen(!expanded); }}>
-      <span className="dice-color-value"><span className="dice-color-swatch" style={{ backgroundColor: selected.body }} aria-hidden="true" />{selected.label}</span>
+      <span className="dice-color-value"><span className="dice-color-swatch" style={{ background: selected.background ?? selected.body }} aria-hidden="true" />{selected.label}</span>
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
     </button>
     {expanded && <div className={`edition-menu dice-color-menu${placement.above ? ' opens-above' : ''}`}>
@@ -112,7 +112,7 @@ export default function DiceColorPicker({ choices, value, onChange, disabled }) 
         {choices.map((choice, index) => <li id={`${menuId}-${index}`} key={choice.id} role="option" aria-selected={choice.id === value}
           className={`edition-option dice-color-option${activeIndex === index ? ' is-active' : ''}`}
           onPointerMove={() => setActiveIndex(index)} onPointerDown={(event) => { ripple(event); event.preventDefault(); }} onClick={() => choose(choice)}>
-          <span className="dice-color-swatch" style={{ backgroundColor: choice.body }} aria-hidden="true" />
+          <span className="dice-color-swatch" style={{ background: choice.background ?? choice.body }} aria-hidden="true" />
           <span>{choice.label}</span><span className="dice-color-check" aria-hidden="true">{choice.id === value ? '✓' : ''}</span>
         </li>)}
       </ul>

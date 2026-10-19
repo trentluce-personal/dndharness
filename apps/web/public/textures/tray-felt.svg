@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="768" viewBox="0 0 768 768">
+  <!-- Static, seeded, isotropic nap: fine fibers over much softer density variation. -->
+  <filter id="nap" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="3" seed="43"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer><feFuncA type="linear" slope=".28"/></feComponentTransfer>
+  </filter>
+  <filter id="density" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency=".023" numOctaves="3" seed="17"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer><feFuncA type="linear" slope=".09"/></feComponentTransfer>
+  </filter>
+  <path fill="#808080" filter="url(#density)" d="M0 0h768v768H0z"/>
+  <path fill="#808080" filter="url(#nap)" d="M0 0h768v768H0z"/>
+</svg>

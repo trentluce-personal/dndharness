@@ -422,10 +422,13 @@ runner or lint tool is configured.
 
 ### Dice roller and 3D visuals
 
-Roll d4/d6/d8/d10/d12/d20/d100, up to ten dice, with a modifier. Results use
+Roll d4/d6/d8/d10/d12/d20/d100, up to ten dice. Totals are the sum of the dice. Results use
 browser cryptographic randomness with rejection sampling; animation does not
 determine the result. The last five rolls are page-local and are not saved or
 broadcast campaign events. Reduced motion uses an instant, non-3D result.
+After settling, **Roll total** appears inside the tray, with individual values for
+multiple dice. **Close result** dismisses it without clearing history; rolling again
+or changing die type/count clears the card. Only the tray behind it is dimmed.
 
 The local `@dndharness/dice-3d` package supplies themed WebGL visuals using pinned
 `@3d-dice/dice-box-threejs` (Three.js/Cannon). The scene is loaded separately from
@@ -445,6 +448,13 @@ choice applies to thumbnails, the tray preview, and rolls, and is saved only in
 this browser; **Theme default** follows light/dark mode. Appearance controls are
 disabled during throws. Changing appearance does not roll or add history.
 Without WebGL, the labeled die buttons and text results remain usable.
+
+Beside Dice color, **Tray background** offers **Theme default**, **Green felt**,
+**Burgundy felt**, **Midnight felt**, **Brown leather**, and **Stone tiles**, with textured swatches.
+It changes only the surface inside the tray, including the text fallback, and is
+saved independently in this browser. Theme default keeps the original light/dark
+tray treatment; other choices stay fixed across theme changes. These are visual
+finishes only and do not change dice physics, results, or history.
 
 ### Run locally
 
