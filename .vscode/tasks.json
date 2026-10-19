@@ -2,7 +2,22 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Application: Ensure Docker ready",
+            "hide": true,
+            "type": "process",
+            "command": "docker",
+            "args": ["info"],
+            "windows": {
+                "command": "powershell.exe",
+                "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/scripts/ensure-docker-desktop.ps1"]
+            },
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared" }
+        },
+        {
             "label": "Application: Start",
+            "dependsOn": "Application: Ensure Docker ready",
             "type": "process",
             "command": "docker",
             "args": ["compose", "up", "-d", "--wait"],
@@ -21,6 +36,7 @@
         },
         {
             "label": "Application: Rebuild and start",
+            "dependsOn": "Application: Ensure Docker ready",
             "type": "process",
             "command": "docker",
             "args": ["compose", "up", "--build", "-d", "--wait"],

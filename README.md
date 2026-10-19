@@ -96,8 +96,8 @@ docker compose down             # Remove the container; keep dependency volumes
 ```
 
 In VS Code, open this repository folder and choose **Terminal → Run Task…**
-or press **Ctrl+Shift+P** and select **Tasks: Run Task**. With Docker Desktop
-running and `.env` configured as above, choose:
+or press **Ctrl+Shift+P** and select **Tasks: Run Task**. With `.env` configured
+as above, choose:
 
 | Task | Command |
 | --- | --- |
@@ -108,6 +108,14 @@ running and `.env` configured as above, choose:
 | Application: Logs | `docker compose logs -f web api` |
 
 Tasks run from the repository root. After starting, use the app URL above.
+**Application: Start** and **Application: Rebuild and start** first check Docker
+engine readiness. On Windows, they automatically launch Docker Desktop from a
+standard system or per-user installation if it is not running, then wait up to
+120 seconds for the engine to respond (including when Desktop is already starting).
+An already-ready engine proceeds immediately. Missing Docker CLI/Desktop, launch
+failures, or a readiness timeout stop the task before Compose runs; check the task
+terminal for guidance and retry. On other platforms, the prerequisite only runs
+`docker info`; start your Docker engine manually. Stop, Status, and Logs run directly.
 **Application: Logs** keeps following output until you press **Ctrl+C** in its
 terminal or use **Tasks: Terminate Task**; this stops following, not the containers.
 
